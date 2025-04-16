@@ -197,90 +197,157 @@ function stripepay_products_page() {
 /**
  * Admin-Seite: Autoren verwalten.
  */
+
+
 function stripepay_authors_page() {
     global $wpdb;
     wp_enqueue_media();
-    $authors_table = $wpdb->prefix . 'stripepay_authors';
+    $table_name = $wpdb->prefix . 'stripepay_authors';
+    $products_table = $wpdb->prefix . 'stripepay_products';
 
-    if ( isset($_POST['stripepay_author_nonce']) && wp_verify_nonce($_POST['stripepay_author_nonce'], 'stripepay_save_author') && isset($_POST['author_name']) ) {
-        $name = sanitize_text_field( $_POST['author_name'] );
-        $image = sanitize_text_field( $_POST['author_image'] );
-        $bio = sanitize_textarea_field( $_POST['author_bio'] );
-        
-        $result = $wpdb->insert( $authors_table, array(
-            'name'  => $name,
-            'image' => $image,
-            'bio'   => $bio
-        ), array( '%s', '%s', '%s', '%s' ) );
-        
-        if ( false === $result ) {
-            echo '<div class="error"><p>Fehler beim Hinzufügen des Autors: ' . esc_html( $wpdb->last_error ) . '</p></div>';
+    $action = $_GET['action'] ?? null;
+    $edit_id = isset($_GET['id']) ? intval($_GET['id']) : null;
+
+    // Formularverarbeitung
+    if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['author_submit'])) {
+        $name = sanitize_text_field($_POST['author_name']);
+        $image = sanitize_text_field($_POST['author_image']);
+        $bio = sanitize_textarea_field($_POST['author_bio']);
+        $id = isset($_POST['id']) ? intval($_POST['id']) : 0;
+
+        if ($id > 0) {
+            $wpdb->update($table_name, [
+                'name' => $name,
+                'image' => $image,
+                'bio' => $bio
+            ], ['id' => $id]);
+            echo "<div class='updated'><p>Autor aktualisiert.</p></div>";
         } else {
-            echo '<div class="updated"><p>Autor hinzugefügt. ID: ' . esc_html( $wpdb->insert_id ) . '</p></div>';
+            $wpdb->insert($table_name, [
+                'name' => $name,
+                'image' => $image,
+                'bio' => $bio
+            ]);
+            echo "<div class='updated'><p>Neuer Autor angelegt.</p></div>";
         }
+
+        $action = null;
     }
-    $author_count = $wpdb->get_var("SELECT COUNT(*) FROM $authors_table");
+
+    // Delete
+    if ($action === 'delete' && $edit_id) {
+        $product_count = $wpdb->get_var($wpdb->prepare(
+            "SELECT COUNT(*) FROM $products_table WHERE author_id = %d",
+            $edit_id
+        ));
+
+        if ($product_count == 0) {
+            $wpdb->delete($table_name, ['id' => $edit_id]);
+            echo "<div class='updated'><p>Autor gelöscht.</p></div>";
+        } else {
+            echo "<div class='error'><p>Autor kann nicht gelöscht werden, da Produkte vorhanden sind.</p></div>";
+        }
+
+        $action = null;
+    }
     ?>
     <div class="wrap">
-        <h1>Autoren verwalten</h1>
-        <p>Anzahl Autoren: <?php echo esc_html($author_count); ?></p>
-        <form method="post">
-            <?php wp_nonce_field( 'stripepay_save_author', 'stripepay_author_nonce' ); ?>
-            <table class="form-table">
-                <tr>
-                    <th>Name</th>
-                    <td><input type="text" name="author_name" required></td>
-                </tr>
-                <tr>
-                    <th>Bild URL</th>
-                    <td>
-                        <input type="text" id="author_image" name="author_image">
-                        <button type="button" class="upload_button" data-target="author_image">Bild auswählen</button>
-                    </td>
-                </tr>
-                <tr>
-                    <th>Bio</th>
-                    <td><textarea name="author_bio"></textarea></td>
-                </tr>
-            </table>
-            <?php submit_button( 'Autor hinzufügen' ); ?>
-        </form>
-        <?php
-        $authors = $wpdb->get_results( "SELECT * FROM $authors_table" );
-        if ( $authors ) {
-            echo '<h2>Autorenliste</h2>';
-            echo '<table class="wp-list-table widefat fixed striped">';
-            echo '<thead><tr>';
-            echo '<th>ID</th>';
-            echo '<th>Name</th>';
-            echo '<th>Aktionen</th>';
-            echo '</tr></thead><tbody>';
-            foreach ( $authors as $author ) {
-                echo '<tr>';
-                echo '<td>' . esc_html( $author->id ) . '</td>';
-                echo '<td>' . esc_html( $author->name ) . '</td>';
-                echo '<td>Edit | Delete</td>';
-                echo '</tr>';
+        <h2>Autorenverwaltung</h2>
+
+        <?php if ($action === 'new' || ($action === 'edit' && $edit_id)) :
+            $author = ['name' => '', 'image' => '', 'bio' => ''];
+            if ($action === 'edit') {
+                $author = $wpdb->get_row($wpdb->prepare("SELECT * FROM $table_name WHERE id = %d", $edit_id), ARRAY_A);
             }
-            echo '</tbody></table>';
-        } else {
-            echo '<p>Keine Autoren gefunden.</p>';
-        }
         ?>
+            <h3><?php echo $action === 'new' ? 'Neuer Autor' : 'Autor bearbeiten'; ?></h3>
+            <form method="post">
+                <table class="form-table">
+                    <tr>
+                        <th scope="row"><label for="author_name">Name</label></th>
+                        <td><input name="author_name" type="text" id="author_name" value="<?php echo esc_attr($author['name']); ?>" class="regular-text" required></td>
+                    </tr>
+                   
+                    <tr>
+                        <th><label for="author_image">Bild</label></th>
+                        <td>
+                            <input type="text" id="author_image" name="author_image">
+                            <button type="button" class="upload_button" data-target="author_image">Bild auswählen</button>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th scope="row"><label for="author_bio">Biografie</label></th>
+                        <td><textarea name="author_bio" id="author_bio" rows="5" class="large-text"><?php echo esc_textarea($author['bio']); ?></textarea></td>
+                    </tr>
+                </table>
+                <input type="hidden" name="id" value="<?php echo esc_attr($edit_id); ?>">
+                <p class="submit"><input type="submit" name="author_submit" class="button button-primary" value="Speichern"></p>
+            </form>
+            <p><a href="?page=<?php echo esc_attr($_GET['page']); ?>">Zurück zur Liste</a></p>
+
+        <?php else : ?>
+            <p><a href="?page=<?php echo esc_attr($_GET['page']); ?>&action=new" class="button button-primary">Neuen Autor anlegen</a></p>
+
+            <table class="widefat fixed" cellspacing="0">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Bild</th>
+                        <th>Biografie</th>
+                        <th>Aktionen</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php
+                    $authors = $wpdb->get_results("SELECT * FROM $table_name");
+                    if ($authors) :
+                        foreach ($authors as $author) :
+                            $product_count = $wpdb->get_var($wpdb->prepare(
+                                "SELECT COUNT(*) FROM $products_table WHERE author_id = %d",
+                                $author->id
+                            ));
+                            $can_delete = $product_count == 0;
+                            ?>
+                            <tr>
+                                <td><?php echo esc_html($author->name); ?></td>
+                                <td><?php echo esc_url($author->image); ?></td>
+                                <td><?php echo esc_html($author->bio); ?></td>
+                                <td>
+                                    <a href="?page=<?php echo esc_attr($_GET['page']); ?>&action=edit&id=<?php echo $author->id; ?>">Edit</a> |
+                                    <?php if ($can_delete) : ?>
+                                        <a href="?page=<?php echo esc_attr($_GET['page']); ?>&action=delete&id=<?php echo $author->id; ?>" onclick="return confirm('Wirklich löschen?');">Delete</a>
+                                    <?php else : ?>
+                                        <span style="color:#999;">Delete</span>
+                                    <?php endif; ?>
+                                </td>
+                            </tr>
+                        <?php endforeach;
+                    else : ?>
+                        <tr><td colspan="4">Keine Autoren gefunden.</td></tr>
+                    <?php endif; ?>
+                </tbody>
+            </table>
+        <?php endif; ?>
     </div>
     <script>
-    jQuery(document).ready(function($){
-        $('.upload_button').click(function(e){
+    jQuery(document).ready(function ($) {
+        $('.upload_button').click(function (e) {
             e.preventDefault();
             var target = $(this).data('target');
             var custom_uploader = wp.media({
-                title: 'Datei auswählen',
-                button: { text: 'Auswählen' },
-                multiple: false 
-            }).on('select', function(){
+                title: 'Bild auswählen',
+                button: {
+                    text: 'Bild verwenden'
+                },
+                multiple: false
+            });
+
+            custom_uploader.on('select', function () {
                 var attachment = custom_uploader.state().get('selection').first().toJSON();
                 $('#' + target).val(attachment.url);
-            }).open();
+            });
+
+            custom_uploader.open();
         });
     });
     </script>
