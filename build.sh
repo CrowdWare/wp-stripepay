@@ -26,14 +26,8 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
-# Update the version in the define line of wp-stripepay.php using perl
-perl -pi -e "s/^(define\('WP_STRIPEPAY_VERSION',\s*')$CURRENT_VERSION('\);)/\${1}$NEW_VERSION\${2}/" wp-stripepay.php
-if [ $? -ne 0 ]; then
-    echo "Error: Failed to update define version in wp-stripepay.php"
-    exit 1
-fi
 
-echo "Updated version in wp-crowdfundtime.php to $NEW_VERSION"
+echo "Updated version in wp-stripepay.php to $NEW_VERSION"
 # --- End: Increment and Update Version ---
 
 # Set ZIP_NAME using the NEW version
@@ -49,7 +43,7 @@ fi
 echo "Creating temporary directory: $TMP_DIR"
 
 # Copy all files to the temporary directory
-# Important: Copy the MODIFIED wp-crowdfundtime.php
+# Important: Copy the MODIFIED wp-stripepay.php
 echo "Copying plugin files..."
 cp -R ./* "$TMP_DIR"
 

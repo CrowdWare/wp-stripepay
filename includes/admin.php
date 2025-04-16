@@ -107,8 +107,9 @@ function stripepay_products_page() {
     <div class="wrap">
         <h1>Produkte verwalten</h1>
         <h2>Neues Produkt hinzufügen</h2>
-        <form method="post">
-            <table class="form-table">
+<form method="post">
+    <?php wp_nonce_field( 'stripepay_save_author', 'stripepay_author_nonce' ); ?>
+    <table class="form-table">
                 <tr>
                     <th>Name</th>
                     <td><input type="text" name="product_name" required></td>
@@ -153,7 +154,7 @@ function stripepay_products_page() {
                     <td><input type="text" name="product_categories"></td>
                 </tr>
                 <tr>
-                    <th>Autor (UUID)</th>
+                    <th>Autor</th>
                     <td>
                         <?php
                         $authors_table = $wpdb->prefix . 'stripepay_authors';
@@ -202,13 +203,11 @@ function stripepay_authors_page() {
     $authors_table = $wpdb->prefix . 'stripepay_authors';
 
     if ( isset($_POST['stripepay_author_nonce']) && wp_verify_nonce($_POST['stripepay_author_nonce'], 'stripepay_save_author') && isset($_POST['author_name']) ) {
-        $uuid = function_exists('wp_generate_uuid4') ? wp_generate_uuid4() : uniqid();
         $name = sanitize_text_field( $_POST['author_name'] );
         $image = sanitize_text_field( $_POST['author_image'] );
         $bio = sanitize_textarea_field( $_POST['author_bio'] );
         
         $result = $wpdb->insert( $authors_table, array(
-            'uuid'  => $uuid,
             'name'  => $name,
             'image' => $image,
             'bio'   => $bio
@@ -226,6 +225,7 @@ function stripepay_authors_page() {
         <h1>Autoren verwalten</h1>
         <p>Anzahl Autoren: <?php echo esc_html($author_count); ?></p>
         <form method="post">
+            <?php wp_nonce_field( 'stripepay_save_author', 'stripepay_author_nonce' ); ?>
             <table class="form-table">
                 <tr>
                     <th>Name</th>
@@ -252,14 +252,12 @@ function stripepay_authors_page() {
             echo '<table class="wp-list-table widefat fixed striped">';
             echo '<thead><tr>';
             echo '<th>ID</th>';
-            echo '<th>UUID</th>';
             echo '<th>Name</th>';
             echo '<th>Aktionen</th>';
             echo '</tr></thead><tbody>';
             foreach ( $authors as $author ) {
                 echo '<tr>';
                 echo '<td>' . esc_html( $author->id ) . '</td>';
-                echo '<td>' . esc_html( $author->uuid ) . '</td>';
                 echo '<td>' . esc_html( $author->name ) . '</td>';
                 echo '<td>Edit | Delete</td>';
                 echo '</tr>';
