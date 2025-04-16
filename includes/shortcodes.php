@@ -4,13 +4,8 @@
  */
 function stripepay_product_shortcode() {
     global $wpdb;
-	$id = isset($_GET['id']) ? intval($_GET['id']) : 0;
+    $id = isset($_GET['id']) ? intval($_GET['id']) : 0;
     if (!$id) return '<p>Kein Produkt gefunden.</p>';
-
-    ///$post = get_post($id);
-    //if (!$post || $post->post_type !== 'stripe_product') return '<p>Ungültiges Produkt.</p>';
-
-
     
     $product_id = intval( $id );
     if ( ! $product_id ) {
@@ -36,11 +31,32 @@ function stripepay_product_shortcode() {
             </div>
         </div>
         <p><?php echo esc_html( $product->langtext ); ?></p>
-        <form method="post" action="">
-            <label for="stripepay_email">Email:</label>
-            <input type="email" name="stripepay_email" id="stripepay_email" required>
-            <button type="submit">Kaufen</button>
-        </form>
+        
+        <div class="stripepay-payment-container">
+            <h3>Jetzt kaufen</h3>
+            
+            <!-- Erfolgs- und Fehlermeldungen -->
+            <div id="stripepay-payment-success" style="display: none;"></div>
+            <div id="stripepay-payment-processing" style="display: none;"></div>
+            <div id="stripepay-card-errors" role="alert" style="display: none;"></div>
+            
+            <!-- Zahlungsformular -->
+            <form id="stripepay-payment-form" data-product-id="<?php echo esc_attr($product_id); ?>">
+                <div class="stripepay-form-row">
+                    <label for="stripepay_email">E-Mail-Adresse</label>
+                    <input type="email" id="stripepay_email" name="stripepay_email" required>
+                </div>
+                
+                <div class="stripepay-form-row">
+                    <label for="stripepay-card-element">Kreditkarte</label>
+                    <div id="stripepay-card-element">
+                        <!-- Stripe Elements wird hier eingefügt -->
+                    </div>
+                </div>
+                
+                <button type="submit">Kaufen</button>
+            </form>
+        </div>
     </div>
     <style>
     .stripepay-row {
@@ -79,6 +95,95 @@ function stripepay_product_shortcode() {
     return ob_get_clean();
 }
 add_shortcode( 'stripepay_product', 'stripepay_product_shortcode' );
+
+/**
+ * Shortcode: Download-Seite.
+ */
+function stripepay_download_shortcode() {
+    // Prüfen, ob ein Token in der URL vorhanden ist
+    if (isset($_GET['stripepay_download']) && $_GET['stripepay_download'] === 'true' && isset($_GET['token'])) {
+        $token = sanitize_text_field($_GET['token']);
+        
+        global $wpdb;
+        $purchases_table = $wpdb->prefix . 'stripepay_purchases';
+        $products_table = $wpdb->prefix . 'stripepay_products';
+        
+        // Kauf anhand des Tokens suchen
+        $purchase = $wpdb->get_row($wpdb->prepare(
+            "SELECT p.*, pr.name as product_name, pr.download_url 
+            FROM $purchases_table p
+            LEFT JOIN $products_table pr ON p.product_id = pr.id
+            WHERE p.download_token = %s AND p.payment_status = 'completed'",
+            $token
+        ));
+        
+        if (!$purchase) {
+            return '<div class="stripepay-download-error">Ungültiger Download-Link.</div>';
+        }
+        
+        // Prüfen, ob der Download-Link abgelaufen ist
+        $expiry_date = strtotime($purchase->download_expiry);
+        if (time() > $expiry_date) {
+            return '<div class="stripepay-download-error">Der Download-Link ist abgelaufen.</div>';
+        }
+        
+        // Download-Informationen anzeigen
+        ob_start();
+        ?>
+        <div class="stripepay-download-container">
+            <h2>Download: <?php echo esc_html($purchase->product_name); ?></h2>
+            <p>Vielen Dank für Ihren Kauf!</p>
+            <p>Klicken Sie auf den Button unten, um Ihre Datei herunterzuladen:</p>
+            <p>
+                <a href="<?php echo esc_url($purchase->download_url); ?>" class="stripepay-download-button" download>
+                    Jetzt herunterladen
+                </a>
+            </p>
+            <p><small>Dieser Link ist gültig bis: <?php echo date_i18n(get_option('date_format') . ' ' . get_option('time_format'), $expiry_date); ?></small></p>
+        </div>
+        <style>
+            .stripepay-download-container {
+                max-width: 600px;
+                margin: 20px auto;
+                padding: 20px;
+                border: 1px solid #e0e0e0;
+                border-radius: 4px;
+                background-color: #f9f9f9;
+                text-align: center;
+            }
+            .stripepay-download-button {
+                display: inline-block;
+                background-color: #007bff;
+                color: white;
+                padding: 10px 20px;
+                border-radius: 4px;
+                text-decoration: none;
+                font-weight: bold;
+                margin: 20px 0;
+            }
+            .stripepay-download-button:hover {
+                background-color: #0056b3;
+                color: white;
+            }
+            .stripepay-download-error {
+                max-width: 600px;
+                margin: 20px auto;
+                padding: 20px;
+                border: 1px solid #fa755a;
+                border-radius: 4px;
+                background-color: #fff0f0;
+                color: #fa755a;
+                text-align: center;
+            }
+        </style>
+        <?php
+        return ob_get_clean();
+    } else {
+        // Keine Token-Parameter in der URL
+        return '<div class="stripepay-download-error">Kein gültiger Download-Link gefunden.</div>';
+    }
+}
+add_shortcode('stripepay_download', 'stripepay_download_shortcode');
 
 /**
  * Shortcode: Produkt-Grid.

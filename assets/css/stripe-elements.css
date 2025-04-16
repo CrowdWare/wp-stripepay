@@ -1,0 +1,102 @@
+/**
+ * Styles für Stripe Elements.
+ */
+
+/* Formular-Container */
+.stripepay-payment-container {
+    max-width: 600px;
+    margin: 20px 0;
+    padding: 20px;
+    border: 1px solid #e0e0e0;
+    border-radius: 4px;
+    background-color: #f9f9f9;
+}
+
+/* Formular */
+#stripepay-payment-form {
+    margin-top: 20px;
+}
+
+/* Label */
+.stripepay-form-row label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: bold;
+    color: #32325d;
+}
+
+/* Input-Felder */
+.stripepay-form-row input {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #e0e0e0;
+    border-radius: 4px;
+    margin-bottom: 15px;
+    font-size: 16px;
+}
+
+/* Stripe Card Element */
+#stripepay-card-element {
+    padding: 10px;
+    border: 1px solid #e0e0e0;
+    border-radius: 4px;
+    background-color: white;
+    margin-bottom: 15px;
+}
+
+/* Fehleranzeige */
+#stripepay-card-errors {
+    color: #fa755a;
+    margin-top: 10px;
+    margin-bottom: 15px;
+    padding: 10px;
+    border-radius: 4px;
+    background-color: #fff0f0;
+    border: 1px solid #fa755a;
+    display: none;
+}
+
+/* Erfolgsanzeige */
+#stripepay-payment-success {
+    color: #3c763d;
+    margin-top: 10px;
+    margin-bottom: 15px;
+    padding: 10px;
+    border-radius: 4px;
+    background-color: #dff0d8;
+    border: 1px solid #3c763d;
+    display: none;
+}
+
+/* Verarbeitungsanzeige */
+#stripepay-payment-processing {
+    color: #31708f;
+    margin-top: 10px;
+    margin-bottom: 15px;
+    padding: 10px;
+    border-radius: 4px;
+    background-color: #d9edf7;
+    border: 1px solid #31708f;
+    display: none;
+}
+
+/* Submit-Button */
+#stripepay-payment-form button {
+    background-color: #007bff;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 4px;
+    font-size: 16px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+#stripepay-payment-form button:hover {
+    background-color: #0056b3;
+}
+
+#stripepay-payment-form button:disabled {
+    background-color: #cccccc;
+    cursor: not-allowed;
+}

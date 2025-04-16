@@ -45,10 +45,18 @@ function stripepay_settings_page() {
     if ( isset( $_POST['stripepay_nonce'] ) && wp_verify_nonce( $_POST['stripepay_nonce'], 'stripepay_save_settings' ) ) {
         update_option( 'stripepay_stripe_live_key', sanitize_text_field( $_POST['stripepay_stripe_live_key'] ) );
         update_option( 'stripepay_stripe_test_key', sanitize_text_field( $_POST['stripepay_stripe_test_key'] ) );
+        update_option( 'stripepay_stripe_live_publishable_key', sanitize_text_field( $_POST['stripepay_stripe_live_publishable_key'] ) );
+        update_option( 'stripepay_stripe_test_publishable_key', sanitize_text_field( $_POST['stripepay_stripe_test_publishable_key'] ) );
+        update_option( 'stripepay_webhook_secret', sanitize_text_field( $_POST['stripepay_webhook_secret'] ) );
+        update_option( 'stripepay_live_mode', isset( $_POST['stripepay_live_mode'] ) ? 1 : 0 );
         echo '<div class="updated"><p>Einstellungen gespeichert.</p></div>';
     }
     $live_key = get_option( 'stripepay_stripe_live_key', '' );
     $test_key = get_option( 'stripepay_stripe_test_key', '' );
+    $live_publishable_key = get_option( 'stripepay_stripe_live_publishable_key', '' );
+    $test_publishable_key = get_option( 'stripepay_stripe_test_publishable_key', '' );
+    $webhook_secret = get_option( 'stripepay_webhook_secret', '' );
+    $live_mode = get_option( 'stripepay_live_mode', false );
     ?>
     <div class="wrap">
         <h1>StripePay Einstellungen</h1>
@@ -56,12 +64,37 @@ function stripepay_settings_page() {
             <?php wp_nonce_field( 'stripepay_save_settings', 'stripepay_nonce' ); ?>
             <table class="form-table">
                 <tr>
-                    <th scope="row">Stripe Live API Key</th>
+                    <th scope="row">Modus</th>
+                    <td>
+                        <label>
+                            <input type="checkbox" name="stripepay_live_mode" value="1" <?php checked( $live_mode, 1 ); ?>>
+                            Live-Modus aktivieren (deaktivieren für Test-Modus)
+                        </label>
+                    </td>
+                </tr>
+                <tr>
+                    <th scope="row">Stripe Live Secret Key</th>
                     <td><input type="text" name="stripepay_stripe_live_key" value="<?php echo esc_attr( $live_key ); ?>" class="regular-text"></td>
                 </tr>
                 <tr>
-                    <th scope="row">Stripe Test API Key</th>
+                    <th scope="row">Stripe Live Publishable Key</th>
+                    <td><input type="text" name="stripepay_stripe_live_publishable_key" value="<?php echo esc_attr( $live_publishable_key ); ?>" class="regular-text"></td>
+                </tr>
+                <tr>
+                    <th scope="row">Stripe Test Secret Key</th>
                     <td><input type="text" name="stripepay_stripe_test_key" value="<?php echo esc_attr( $test_key ); ?>" class="regular-text"></td>
+                </tr>
+                <tr>
+                    <th scope="row">Stripe Test Publishable Key</th>
+                    <td><input type="text" name="stripepay_stripe_test_publishable_key" value="<?php echo esc_attr( $test_publishable_key ); ?>" class="regular-text"></td>
+                </tr>
+                <tr>
+                    <th scope="row">Stripe Webhook Secret</th>
+                    <td>
+                        <input type="text" name="stripepay_webhook_secret" value="<?php echo esc_attr( $webhook_secret ); ?>" class="regular-text">
+                        <p class="description">Webhook-Secret für die Verifizierung von Stripe-Events.</p>
+                        <p>Webhook-URL: <code><?php echo esc_html( admin_url( 'admin-ajax.php?action=stripepay_webhook' ) ); ?></code></p>
+                    </td>
                 </tr>
             </table>
             <?php submit_button(); ?>

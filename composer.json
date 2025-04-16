@@ -1,0 +1,16 @@
+{
+    "name": "crowdware/wp-stripepay",
+    "description": "Ein WordPress Plugin zum Verkauf von Büchern und digitalen Inhalten über Stripe",
+    "type": "wordpress-plugin",
+    "require": {
+        "stripe/stripe-php": "^10.0"
+    },
+    "license": "GPL-2.0-or-later",
+    "authors": [
+        {
+            "name": "CrowdWare",
+            "email": "info@example.com"
+        }
+    ],
+    "minimum-stability": "stable"
+}
