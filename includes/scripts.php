@@ -26,13 +26,32 @@ function stripepay_enqueue_scripts() {
         $publishable_key = get_option( 'stripepay_stripe_test_publishable_key', '' );
     }
     
+    // Überprüfen, ob die Publishable Keys konfiguriert sind
+    if (empty($publishable_key)) {
+        error_log('Stripe Publishable Key ist nicht konfiguriert. Bitte konfigurieren Sie die Stripe API-Keys in den Plugin-Einstellungen.');
+    }
+    
+    // Absolute URL zum AJAX-Endpunkt
+    $ajax_url = admin_url('admin-ajax.php');
+    
+    // Nonce für die Sicherheit
+    $nonce = wp_create_nonce('stripepay_payment');
+    
+    error_log('AJAX URL: ' . $ajax_url);
+    error_log('Nonce: ' . $nonce);
+    error_log('Publishable Key: ' . $publishable_key);
+    
     wp_localize_script(
         'stripepay-elements-js',
         'stripePayData',
         array(
-            'ajaxUrl' => admin_url( 'admin-ajax.php' ),
-            'nonce' => wp_create_nonce( 'stripepay_payment' ),
+            'ajaxUrl' => $ajax_url,
+            'nonce' => $nonce,
             'publishableKey' => $publishable_key,
+            'cookiePath' => COOKIEPATH,
+            'cookieDomain' => COOKIE_DOMAIN,
+            'siteUrl' => get_site_url(),
+            'homeUrl' => home_url(),
         )
     );
     

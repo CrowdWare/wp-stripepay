@@ -56,7 +56,7 @@ rm -rf "$TMP_DIR/.gitignore"
 rm -rf "$TMP_DIR/node_modules" # If you ever use npm
 rm -rf "$TMP_DIR/package-lock.json" # If you ever use npm
 rm -rf "$TMP_DIR/composer.lock" # If you ever use composer
-rm -rf "$TMP_DIR/vendor" # If you ever use composer
+# rm -rf "$TMP_DIR/vendor" # Behalten Sie den vendor-Ordner für die Stripe-Bibliothek
 rm -rf "$TMP_DIR/.DS_Store"
 find "$TMP_DIR" -name ".DS_Store" -delete
 find "$TMP_DIR" -path '*/.git/*' -delete # Remove any nested .git folders if submodules are used

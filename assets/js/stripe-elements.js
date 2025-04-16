@@ -40,17 +40,19 @@
         card = elements.create('card', {
             style: {
                 base: {
-                    color: '#32325d',
+                    color: '#eeeeee',
                     fontFamily: '"Helvetica Neue", Helvetica, sans-serif',
                     fontSmoothing: 'antialiased',
                     fontSize: '16px',
+                    backgroundColor: '#333333',
                     '::placeholder': {
-                        color: '#aab7c4'
-                    }
+                        color: '#999999'
+                    },
+                    iconColor: '#eeeeee'
                 },
                 invalid: {
-                    color: '#fa755a',
-                    iconColor: '#fa755a'
+                    color: '#ff6b6b',
+                    iconColor: '#ff6b6b'
                 }
             }
         });
@@ -100,28 +102,58 @@
             return;
         }
 
+        console.log('Stripe Pay Data:', stripePayData);
+        console.log('Sende AJAX-Anfrage an:', stripePayData.ajaxUrl);
+        console.log('Mit Daten:', {
+            action: 'stripepay_process_payment',
+            nonce: stripePayData.nonce,
+            product_id: productId,
+            email: emailInput.value,
+            payment_method_id: paymentMethod.id
+        });
+        
         // AJAX-Anfrage an den Server senden
         $.ajax({
             url: stripePayData.ajaxUrl,
             type: 'POST',
+            dataType: 'json',
+            cache: false,
+            xhrFields: {
+                withCredentials: true
+            },
+            crossDomain: true,
+            beforeSend: function(xhr) {
+                xhr.setRequestHeader('X-WP-Nonce', stripePayData.nonce);
+            },
             data: {
                 action: 'stripepay_process_payment',
                 nonce: stripePayData.nonce,
                 product_id: productId,
                 email: emailInput.value,
-                payment_method_id: paymentMethod.id
+                payment_method_id: paymentMethod.id,
+                security: stripePayData.nonce
             },
             success: function(response) {
-                if (response.success) {
+                console.log('AJAX-Erfolg:', response);
+                if (response && response.success) {
                     handleServerResponse(response.data);
                 } else {
                     setLoading(false);
-                    showError(response.data.message || 'Ein Fehler ist aufgetreten.');
+                    showError((response && response.data && response.data.message) || 'Ein Fehler ist aufgetreten.');
                 }
             },
-            error: function() {
+            error: function(xhr, status, error) {
+                console.error('AJAX-Fehler:', status, error);
+                console.log('Response Status:', xhr.status);
+                console.log('Response Text:', xhr.responseText);
+                try {
+                    const responseJson = JSON.parse(xhr.responseText);
+                    console.log('Response JSON:', responseJson);
+                } catch (e) {
+                    console.log('Konnte Response nicht als JSON parsen');
+                }
                 setLoading(false);
-                showError('Ein Fehler bei der Verbindung zum Server ist aufgetreten.');
+                showError('Ein Fehler bei der Verbindung zum Server ist aufgetreten. Bitte überprüfen Sie die Konsole für weitere Details.');
             }
         });
     }
@@ -159,16 +191,29 @@
      * Überprüft den Status einer Zahlung.
      */
     function checkPaymentStatus(paymentIntentId) {
+        console.log('Überprüfe Payment Status für:', paymentIntentId);
+        
         $.ajax({
             url: stripePayData.ajaxUrl,
             type: 'POST',
+            dataType: 'json',
+            cache: false,
+            xhrFields: {
+                withCredentials: true
+            },
+            crossDomain: true,
+            beforeSend: function(xhr) {
+                xhr.setRequestHeader('X-WP-Nonce', stripePayData.nonce);
+            },
             data: {
                 action: 'stripepay_check_payment_status',
                 nonce: stripePayData.nonce,
-                payment_intent_id: paymentIntentId
+                payment_intent_id: paymentIntentId,
+                security: stripePayData.nonce
             },
             success: function(response) {
-                if (response.success) {
+                console.log('Status-Überprüfung erfolgreich:', response);
+                if (response && response.success) {
                     if (response.data.status === 'succeeded') {
                         setLoading(false);
                         showSuccess(response.data.message || 'Zahlung erfolgreich!');
@@ -180,12 +225,21 @@
                     }
                 } else {
                     setLoading(false);
-                    showError(response.data.message || 'Ein Fehler ist aufgetreten.');
+                    showError((response && response.data && response.data.message) || 'Ein Fehler ist aufgetreten.');
                 }
             },
-            error: function() {
+            error: function(xhr, status, error) {
+                console.error('AJAX-Fehler bei Status-Überprüfung:', status, error);
+                console.log('Response Status:', xhr.status);
+                console.log('Response Text:', xhr.responseText);
+                try {
+                    const responseJson = JSON.parse(xhr.responseText);
+                    console.log('Response JSON:', responseJson);
+                } catch (e) {
+                    console.log('Konnte Response nicht als JSON parsen');
+                }
                 setLoading(false);
-                showError('Ein Fehler bei der Verbindung zum Server ist aufgetreten.');
+                showError('Ein Fehler bei der Verbindung zum Server ist aufgetreten. Bitte überprüfen Sie die Konsole für weitere Details.');
             }
         });
     }
