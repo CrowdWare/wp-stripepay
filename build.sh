@@ -20,7 +20,7 @@ NEW_VERSION=$(echo $CURRENT_VERSION | awk -F. -v OFS=. '{$NF = $NF + 1;} 1')
 echo "New version: $NEW_VERSION"
 
 # Update the version in the header line of wp-stripepay.php using perl
-perl -pi -e "s/^(\s*\*\s*Version:\s*)$CURRENT_VERSION/\${1}$NEW_VERSION/" wp-stripepay.php
+perl -pi -e "s/^\s*Version:\s*[0-9.]+/Version: $NEW_VERSION/" wp-stripepay.php
 if [ $? -ne 0 ]; then
     echo "Error: Failed to update header version in wp-stripepay.php"
     exit 1
