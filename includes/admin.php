@@ -73,129 +73,6 @@ function stripepay_settings_page() {
 /**
  * Admin-Seite: Produkte verwalten.
  */
-/*
-function stripepay_products_page() {
-    global $wpdb;
-    wp_enqueue_media();
-    $products_table = $wpdb->prefix . 'stripepay_products';
-
-    if ( isset( $_POST['product_name'] ) ) {
-        $name = sanitize_text_field( $_POST['product_name'] );
-        $price = intval( $_POST['product_price'] );
-        $image = sanitize_text_field( $_POST['product_image'] );
-        $kurztext = sanitize_textarea_field( $_POST['product_kurztext'] );
-        $langtext = sanitize_textarea_field( $_POST['product_langtext'] );
-        $life = intval( $_POST['product_life'] );
-        $categories = sanitize_text_field( $_POST['product_categories'] );
-        $download_url = sanitize_text_field( $_POST['product_download'] );
-        $author_id = intval( $_POST['product_author'] );
-
-        $wpdb->insert( $products_table, array(
-            'name'         => $name,
-            'price'        => $price,
-            'image'        => $image,
-            'kurztext'     => $kurztext,
-            'langtext'     => $langtext,
-            'life'         => $life,
-            'categories'   => $categories,
-            'download_url' => $download_url,
-            'author_id'    => $author_id
-        ), array( '%s', '%d', '%s', '%s', '%s', '%d', '%s', '%s', '%s' ) );
-
-        echo '<div class="updated"><p>Produkt hinzugefügt.</p></div>';
-    }
-    ?>
-    <div class="wrap">
-        <h1>Produkte verwalten</h1>
-        <h2>Neues Produkt hinzufügen</h2>
-<form method="post">
-    <?php wp_nonce_field( 'stripepay_save_author', 'stripepay_author_nonce' ); ?>
-    <table class="form-table">
-                <tr>
-                    <th>Name</th>
-                    <td><input type="text" name="product_name" required></td>
-                </tr>
-                <tr>
-                    <th>Preis (in Cent)</th>
-                    <td><input type="number" name="product_price" required></td>
-                </tr>
-                <tr>
-                    <th>Bild URL</th>
-                    <td>
-                        <input type="text" id="product_image" name="product_image">
-                        <button type="button" class="upload_button" data-target="product_image">Bild auswählen</button>
-                    </td>
-                </tr>
-                <tr>
-                    <th>Download URL</th>
-                    <td>
-                        <input type="text" id="product_download" name="product_download">
-                        <button type="button" class="upload_button" data-target="product_download">Datei hochladen</button>
-                    </td>
-                </tr>
-                <tr>
-                    <th>Kurztext</th>
-                    <td><textarea name="product_kurztext"></textarea></td>
-                </tr>
-                <tr>
-                    <th>Langtext</th>
-                    <td><textarea name="product_langtext"></textarea></td>
-                </tr>
-                <tr>
-                    <th>Bezahlmodus</th>
-                    <td>
-                        <select name="product_life">
-                            <option value="1">Live</option>
-                            <option value="0">Test</option>
-                        </select>
-                    </td>
-                </tr>
-                <tr>
-                    <th>Kategorien (Komma-getrennt)</th>
-                    <td><input type="text" name="product_categories"></td>
-                </tr>
-                <tr>
-                    <th>Autor</th>
-                    <td>
-                        <?php
-                        $authors_table = $wpdb->prefix . 'stripepay_authors';
-                        $authors = $wpdb->get_results( "SELECT id, name FROM $authors_table" );
-                        if ( $authors ) {
-                            echo '<select name="product_author">';
-                            foreach ( $authors as $author ) {
-                                echo '<option value="' . esc_attr( $author->id ) . '">' . esc_html( $author->name ) . '</option>';
-                            }
-                            echo '</select>';
-                        } else {
-                            echo 'Keine Autoren gefunden.';
-                        }
-                        ?>
-                    </td>
-                </tr>
-            </table>
-            <?php submit_button( 'Produkt hinzufügen' ); ?>
-        </form>
-    </div>
-    <script>
-    jQuery(document).ready(function($){
-        $('.upload_button').click(function(e){
-            e.preventDefault();
-            var target = $(this).data('target');
-            var custom_uploader = wp.media({
-                title: 'Datei auswählen',
-                button: { text: 'Auswählen' },
-                multiple: false 
-            }).on('select', function(){
-                var attachment = custom_uploader.state().get('selection').first().toJSON();
-                $('#' + target).val(attachment.url);
-            }).open();
-        });
-    });
-    </script>
-    <?php
-}
-*/
-
 
 function stripepay_products_page() {
     global $wpdb;
@@ -321,8 +198,10 @@ function stripepay_products_page() {
                 <thead>
                     <tr>
                         <th>Name</th>
+                        <th>Kurztext</th>
                         <th>Preis</th>
                         <th>Autor</th>
+                        <th>Life</th>
                         <th>Aktionen</th>
                     </tr>
                 </thead>
@@ -334,8 +213,10 @@ function stripepay_products_page() {
                             ?>
                             <tr>
                                 <td><?php echo esc_html($p->name); ?></td>
+                                <td><?php echo esc_html($p->kurztext); ?></td>
                                 <td><?php echo number_format($p->price / 100, 2, ',', '.') . ' €'; ?></td>
                                 <td><?php echo esc_html($p->author_name); ?></td>
+                                <td><?php echo $p->life ? 'Live' : 'Test'; ?></td>
                                 <td>
                                     <a href="?page=<?php echo esc_attr($_GET['page']); ?>&action=edit&id=<?php echo $p->id; ?>">Edit</a> |
                                     <a href="?page=<?php echo esc_attr($_GET['page']); ?>&action=delete&id=<?php echo $p->id; ?>" onclick="return confirm('Wirklich löschen?');">Delete</a>
