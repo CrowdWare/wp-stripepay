@@ -25,9 +25,16 @@ function stripepay_product_shortcode() {
     ob_start();
     ?>
     <div class="stripepay-product">
-        <h2><?php echo esc_html( $product->name ); ?></h2>
-        <p>Preis: <?php echo esc_html( $product->price ); ?> Cent</p>
-        <p><?php echo esc_html( $product->kurztext ); ?></p>
+        <div class="stripepay-row">
+            <div class="stripepay-image">
+                <img src="<?php echo esc_html($product->image); ?>" alt="Produktbild">
+            </div>
+            <div class="stripepay-content">
+                <h2><?php echo esc_html( $product->name ); ?></h2>
+                <p>Preis: <?php echo number_format($p->price / 100, 2, ',', '.') . ' €'; ?></p>
+                <p><?php echo esc_html( $product->kurztext ); ?></p>
+            </div>
+        </div>
         <p><?php echo esc_html( $product->langtext ); ?></p>
         <form method="post" action="">
             <label for="stripepay_email">Email:</label>
@@ -35,6 +42,35 @@ function stripepay_product_shortcode() {
             <button type="submit">Kaufen</button>
         </form>
     </div>
+    <style>
+    .stripepay-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 2rem;
+    flex-wrap: wrap;
+    }
+
+    .stripepay-image img {
+    max-width: 100%;
+    height: auto;
+    max-height: 400px;
+    object-fit: contain;
+    }
+
+    .stripepay-image {
+    flex: 1 1 300px;
+    }
+
+    .stripepay-content {
+    flex: 2 1 400px;
+    }
+
+    @media (max-width: 768px) {
+    .stripepay-row {
+        flex-direction: column;
+    }
+    }
+    </style>
     <?php
     return ob_get_clean();
 }
