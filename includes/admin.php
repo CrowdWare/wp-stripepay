@@ -199,6 +199,7 @@ function stripepay_products_page() {
                     <tr>
                         <th>Name</th>
                         <th>Kurztext</th>
+                        <th>Bild</th>
                         <th>Preis</th>
                         <th>Autor</th>
                         <th>Life</th>
@@ -214,6 +215,7 @@ function stripepay_products_page() {
                             <tr>
                                 <td><?php echo esc_html($p->name); ?></td>
                                 <td><?php echo esc_html($p->kurztext); ?></td>
+                                <td><img src="<?php echo esc_html($p->image); ?>" style="height: 60px; width: auto;" alt="Produktbild"></td>
                                 <td><?php echo number_format($p->price / 100, 2, ',', '.') . ' €'; ?></td>
                                 <td><?php echo esc_html($p->author_name); ?></td>
                                 <td><?php echo $p->life ? 'Live' : 'Test'; ?></td>
