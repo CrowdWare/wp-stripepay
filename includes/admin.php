@@ -368,7 +368,7 @@ function stripepay_authors_page() {
                             ?>
                             <tr>
                                 <td><?php echo esc_html($author->name); ?></td>
-                                <td><?php echo esc_url($author->image); ?></td>
+                                <td><img src="<?php echo esc_html($author->image); ?>" style="height: 60px; width: auto;" alt="Bild"></td>
                                 <td><?php echo esc_html($author->bio); ?></td>
                                 <td>
                                     <a href="?page=<?php echo esc_attr($_GET['page']); ?>&action=edit&id=<?php echo $author->id; ?>">Edit</a> |
