@@ -31,7 +31,7 @@ function stripepay_product_shortcode() {
             </div>
             <div class="stripepay-content">
                 <h2><?php echo esc_html( $product->name ); ?></h2>
-                <p>Preis: <?php echo number_format($p->price / 100, 2, ',', '.') . ' €'; ?></p>
+                <p>Preis: <?php echo number_format($product->price / 100, 2, ',', '.') . ' €'; ?></p>
                 <p><?php echo esc_html( $product->kurztext ); ?></p>
             </div>
         </div>
@@ -48,6 +48,10 @@ function stripepay_product_shortcode() {
     align-items: flex-start;
     gap: 2rem;
     flex-wrap: wrap;
+    }
+
+    .stripepay-content h2 {
+        margin-top: 0;
     }
 
     .stripepay-image img {
