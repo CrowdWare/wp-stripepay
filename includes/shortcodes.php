@@ -2,15 +2,19 @@
 /**
  * Shortcode: Einzelproduktanzeige.
  */
-function stripepay_product_shortcode( $atts ) {
+function stripepay_product_shortcode() {
     global $wpdb;
-    $atts = shortcode_atts( array(
-        'id' => 0,
-    ), $atts, 'stripepay_product' );
+	$id = isset($_GET['id']) ? intval($_GET['id']) : 0;
+    if (!$id) return '<p>Kein Produkt gefunden.</p>';
+
+    ///$post = get_post($id);
+    //if (!$post || $post->post_type !== 'stripe_product') return '<p>Ungültiges Produkt.</p>';
+
+
     
-    $product_id = intval( $atts['id'] );
+    $product_id = intval( $id );
     if ( ! $product_id ) {
-        return 'Ungültiges Produkt.';
+        return '<p>Ungültiges Produkt.</p>';
     }
     
     $products_table = $wpdb->prefix . 'stripepay_products';
@@ -18,7 +22,6 @@ function stripepay_product_shortcode( $atts ) {
     if ( ! $product ) {
         return 'Produkt nicht gefunden.';
     }
-    
     ob_start();
     ?>
     <div class="stripepay-product">
@@ -90,7 +93,7 @@ function stripepay_products_grid_shortcode( $atts ) {
                         ?>
                         <li style="list-style: none; position: absolute;" class="isotope-item col-sm-6 col-md-3<?php echo esc_attr( $cat_classes ); ?>">
                                 <figure>
-                                    <a href="<?php echo esc_html( $product->id ); ?>"><img width="260" height="170" class="img-responsive img-rounded" src="<?php echo esc_url( $product->image ); ?>" alt="<?php echo esc_attr( $product->name ); ?>"></a>
+                                    <a href="product?id=<?php echo esc_html( $product->id ); ?>"><img width="260" height="170" class="img-responsive img-rounded" src="<?php echo esc_url( $product->image ); ?>" alt="<?php echo esc_attr( $product->name ); ?>"></a>
                                 </figure>
                         </li>
                     <?php
