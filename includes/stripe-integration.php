@@ -367,19 +367,14 @@ function stripepay_ajax_process_payment() {
                 error_log('Fehler beim Aktualisieren des Kaufs in der Datenbank: ' . $wpdb->last_error);
             }
 
-            // E-Mail mit Download-Link senden
+            // KEINE E-Mail senden - wird vom Webhook-Handler erledigt
             $purchase = $wpdb->get_row($wpdb->prepare(
                 "SELECT * FROM $purchases_table WHERE id = %d",
                 $purchase_id
             ));
             
             if ($purchase) {
-                try {
-                    stripepay_send_download_email($purchase);
-                    error_log('E-Mail mit Download-Link wurde gesendet');
-                } catch (Exception $e) {
-                    error_log('Fehler beim Senden der E-Mail: ' . $e->getMessage());
-                }
+                error_log('Kauf erfolgreich. E-Mail wird vom Webhook-Handler gesendet.');
             }
 
             wp_send_json_success([
@@ -551,19 +546,14 @@ function stripepay_ajax_check_payment_status() {
                     exit;
                 }
 
-                // E-Mail mit Download-Link senden
+                // KEINE E-Mail senden - wird vom Webhook-Handler erledigt
                 $purchase = $wpdb->get_row($wpdb->prepare(
                     "SELECT * FROM $purchases_table WHERE payment_intent_id = %s",
                     $payment_intent_id
                 ));
                 
                 if ($purchase) {
-                    try {
-                        stripepay_send_download_email($purchase);
-                        error_log('E-Mail mit Download-Link wurde gesendet');
-                    } catch (Exception $e) {
-                        error_log('Fehler beim Senden der E-Mail: ' . $e->getMessage());
-                    }
+                    error_log('Kauf erfolgreich. E-Mail wird vom Webhook-Handler gesendet.');
                 }
             }
 

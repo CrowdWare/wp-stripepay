@@ -40,15 +40,15 @@
         card = elements.create('card', {
             style: {
                 base: {
-                    color: '#eeeeee',
+                    color: '#333333', // Dunkle Textfarbe für bessere Lesbarkeit
                     fontFamily: '"Helvetica Neue", Helvetica, sans-serif',
                     fontSmoothing: 'antialiased',
                     fontSize: '16px',
-                    backgroundColor: '#333333',
+                    backgroundColor: '#f5f5f5', // Heller Hintergrund für bessere Lesbarkeit
                     '::placeholder': {
-                        color: '#999999'
+                        color: '#888888' // Dunklere Platzhalterfarbe für bessere Lesbarkeit
                     },
-                    iconColor: '#eeeeee'
+                    iconColor: '#333333' // Dunkle Iconfarbe für bessere Lesbarkeit
                 },
                 invalid: {
                     color: '#ff6b6b',
