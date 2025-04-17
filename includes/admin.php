@@ -119,6 +119,7 @@ function stripepay_products_page() {
     // Speichern
     if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['product_name'])) {
         $name = sanitize_text_field($_POST['product_name']);
+        $subtitle = sanitize_text_field($_POST['product_subtitle']);
         $price = intval($_POST['product_price']);
         $image = sanitize_text_field($_POST['product_image']);
         $kurztext = sanitize_textarea_field($_POST['product_kurztext']);
@@ -128,7 +129,7 @@ function stripepay_products_page() {
         $download_url = sanitize_text_field($_POST['product_download']);
         $author_id = intval($_POST['product_author']);
 
-        $data = compact('name', 'price', 'image', 'kurztext', 'langtext', 'life', 'categories', 'download_url', 'author_id');
+        $data = compact('name', 'subtitle', 'price', 'image', 'kurztext', 'langtext', 'life', 'categories', 'download_url', 'author_id');
 
         if ($edit_id) {
             $wpdb->update($products_table, $data, ['id' => $edit_id]);
@@ -155,7 +156,7 @@ function stripepay_products_page() {
         <?php if ($action === 'new' || ($action === 'edit' && $edit_id)) :
 
             $product = [
-                'name' => '', 'price' => '', 'image' => '', 'kurztext' => '',
+                'name' => '', 'subtitle' => '', 'price' => '', 'image' => '', 'kurztext' => '',
                 'langtext' => '', 'life' => 1, 'categories' => '', 'download_url' => '', 'author_id' => ''
             ];
             if ($action === 'edit') {
@@ -168,6 +169,9 @@ function stripepay_products_page() {
                 <table class="form-table">
                     <tr><th>Name</th>
                         <td><input type="text" name="product_name" value="<?php echo esc_attr($product['name']); ?>" required></td>
+                    </tr>
+                    <tr><th>Untertitle</th>
+                        <td><input type="text" name="product_subtitle" value="<?php echo esc_attr($product['subtitle']); ?>"></td>
                     </tr>
                     <tr><th>Preis (in Cent)</th>
                         <td><input type="number" name="product_price" value="<?php echo esc_attr($product['price']); ?>" required></td>
@@ -231,6 +235,7 @@ function stripepay_products_page() {
                 <thead>
                     <tr>
                         <th>Name</th>
+                        <th>Untertitle</th>
                         <th>Kurztext</th>
                         <th>Bild</th>
                         <th>Preis</th>
@@ -247,6 +252,7 @@ function stripepay_products_page() {
                             ?>
                             <tr>
                                 <td><?php echo esc_html($p->name); ?></td>
+                                <td><?php echo esc_html($p->subtitle); ?></td>
                                 <td><?php echo esc_html($p->kurztext); ?></td>
                                 <td><img src="<?php echo esc_html($p->image); ?>" style="height: 60px; width: auto;" alt="Produktbild"></td>
                                 <td><?php echo number_format($p->price / 100, 2, ',', '.') . ' €'; ?></td>

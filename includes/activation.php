@@ -15,6 +15,7 @@ function stripepay_activate() {
     $sql_products = "CREATE TABLE $products_table (
         id bigint(20) NOT NULL AUTO_INCREMENT,
         name varchar(255) NOT NULL,
+        subtitle varchar(255) DEFAULT NULL,
         price int NOT NULL,
         image varchar(255) DEFAULT NULL,
         kurztext text,

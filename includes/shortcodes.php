@@ -13,11 +13,13 @@ function stripepay_product_shortcode() {
     }
     
     $products_table = $wpdb->prefix . 'stripepay_products';
+    $author_table = $wpdb->prefix . 'stripepay_authors';
     $product = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM $products_table WHERE id = %d", $product_id ) );
     if ( ! $product ) {
         return 'Produkt nicht gefunden.';
     }
     ob_start();
+    $Parsedown = new Parsedown();
     ?>
     <div class="stripepay-product">
         <div class="stripepay-row">
@@ -26,11 +28,13 @@ function stripepay_product_shortcode() {
             </div>
             <div class="stripepay-content">
                 <h2><?php echo esc_html( $product->name ); ?></h2>
+                <p><strong><?php echo esc_html( $product->subtitle ); ?></strong></p>
+                <p>Von: <?php echo esc_html( $product->author ); ?></p>
                 <p>Preis: <?php echo number_format($product->price / 100, 2, ',', '.') . ' €'; ?></p>
-                <p><?php echo esc_html( $product->kurztext ); ?></p>
+                <p><?php echo $Parsedown->text($product->kurztext); ?></p>
             </div>
         </div>
-        <p><?php echo esc_html( $product->langtext ); ?></p>
+        <p><?php echo $Parsedown->text($product->langtext); ?></p>
         
         <div class="stripepay-payment-container">
             <h3>Jetzt kaufen</h3>
