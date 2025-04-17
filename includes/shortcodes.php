@@ -229,8 +229,8 @@ function stripepay_products_grid_shortcode( $atts ) {
                 echo '<li data-option-value=".' . esc_attr( $class_name ) . '"><a href="#">' . esc_html( $cat ) . '</a></li>';
             }?>
         </ul>
-        <div class="row">
-            <ul class="sort-destination isotope" data-sort-id="isotope-list" style="position: relative; overflow: hidden; height: 908px;">
+        <div class="row" style="display: flex; flex-wrap: wrap; width: 100%;">
+            <ul class="sort-destination isotope" data-sort-id="isotope-list" style="display: flex; flex-wrap: wrap; width: 100%; height: auto !important; position: static !important;">
                 <?php
                 if ( $products ) {
                     foreach ( $products as $product ) {
@@ -240,7 +240,7 @@ function stripepay_products_grid_shortcode( $atts ) {
                             $cat_classes .= ' ' . strtolower( trim( $cat ) );
                         }
                         ?>
-                        <li style="list-style: none; position: absolute;" class="isotope-item col-sm-6 col-md-3<?php echo esc_attr( $cat_classes ); ?>">
+                        <li style="list-style: none;" class="isotope-item col-sm-6 col-md-3<?php echo esc_attr( $cat_classes ); ?>">
                                 <figure>
                                     <a href="product?id=<?php echo esc_html( $product->id ); ?>"><img width="260" height="170" class="img-responsive img-rounded" src="<?php echo esc_url( $product->image ); ?>" alt="<?php echo esc_attr( $product->name ); ?>"></a>
                                 </figure>
@@ -290,7 +290,29 @@ function stripepay_products_grid_shortcode( $atts ) {
   	height:auto
 	}
 
- 
+    .row {
+        margin-left: -15px;
+        margin-right: -15px;
+        width: 100%;
+    }
+
+    .sort-destination {
+        display: flex;
+        flex-wrap: wrap;
+        width: 100%;
+        position: relative !important;
+        height: auto !important;
+    }
+
+    .isotope-item {
+        position: relative !important;
+        left: auto !important;
+        top: auto !important;
+        width: 25% !important;
+        padding: 15px;
+        box-sizing: border-box;
+        transform: none !important;
+    }
 
     .col-sm-6, .col-md-3 {
     	padding-left: 15px;
@@ -302,17 +324,23 @@ function stripepay_products_grid_shortcode( $atts ) {
     	width: 100%;
     }
 
-    @media (min-width: 768px) {
-    .col-sm-6 {
-        width: 50%;
-    }
+    @media (max-width: 991px) {
+        .isotope-item {
+            width: 33.333% !important;
+        }
     }
 
-    @media (min-width: 992px) {
-    .col-md-3 {
-        width: 25%;
+    @media (max-width: 767px) {
+        .isotope-item {
+            width: 50% !important;
+        }
     }
-    }      
+
+    @media (max-width: 480px) {
+        .isotope-item {
+            width: 100% !important;
+        }
+    }
 
     .btn {
     display: inline-block;
@@ -389,11 +417,39 @@ document.addEventListener("DOMContentLoaded", function () {
   var grid = document.querySelector('.isotope');
   if (!grid) return;
 
+  // Entferne alle inline styles, die von Isotope gesetzt wurden
+  var items = grid.querySelectorAll('.isotope-item');
+  items.forEach(function(item) {
+    item.style.position = 'relative';
+    item.style.left = 'auto';
+    item.style.top = 'auto';
+    item.style.transform = 'none';
+  });
+
+  // Setze die Höhe des Containers zurück
+  grid.style.height = 'auto';
+
   imagesLoaded(grid, function () {
     var iso = new Isotope(grid, {
       itemSelector: '.isotope-item',
-      layoutMode: 'fitRows'
+      layoutMode: 'fitRows',
+      fitRows: {
+        gutter: 0
+      },
+      // Deaktiviere die Positionierung durch Isotope
+      transitionDuration: 0
     });
+
+    // Überschreibe die Positionierung nach der Initialisierung
+    setTimeout(function() {
+      items.forEach(function(item) {
+        item.style.position = 'relative';
+        item.style.left = 'auto';
+        item.style.top = 'auto';
+        item.style.transform = 'none';
+      });
+      grid.style.height = 'auto';
+    }, 100);
 
     var filtersElem = document.querySelector('.isotope-filter');
     if (!filtersElem) return;
@@ -403,7 +459,15 @@ document.addEventListener("DOMContentLoaded", function () {
 
       event.preventDefault();
       var filterValue = event.target.parentNode.getAttribute('data-option-value');
-      iso.arrange({ filter: filterValue });
+      
+      // Manuelles Filtern statt Isotope
+      items.forEach(function(item) {
+        if (filterValue === '*' || item.classList.contains(filterValue.substring(1))) {
+          item.style.display = '';
+        } else {
+          item.style.display = 'none';
+        }
+      });
 
       // active class toggling
       filtersElem.querySelectorAll('li').forEach(function(el) {
