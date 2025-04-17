@@ -14,7 +14,7 @@ function stripepay_product_shortcode() {
     
     $products_table = $wpdb->prefix . 'stripepay_products';
     $author_table = $wpdb->prefix . 'stripepay_authors';
-    $product = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM $products_table WHERE id = %d", $product_id ) );
+    $product = $wpdb->get_row( $wpdb->prepare( "SELECT p.*, a.name as author_name, a.image as author_image, a.bio as author_bio FROM $products_table p LEFT JOIN $author_table a ON p.author_id = a.id WHERE p.id = %d", $product_id ) );
     if ( ! $product ) {
         return 'Produkt nicht gefunden.';
     }
@@ -29,7 +29,7 @@ function stripepay_product_shortcode() {
             <div class="stripepay-content">
                 <h2><?php echo esc_html( $product->name ); ?></h2>
                 <p><strong><?php echo esc_html( $product->subtitle ); ?></strong></p>
-                <p>Von: <?php echo esc_html( $product->author ); ?></p>
+                <p>Von: <?php echo esc_html( $product->author_name ); ?></p>
                 <p>Preis: <?php echo number_format($product->price / 100, 2, ',', '.') . ' €'; ?></p>
                 <p><?php echo $Parsedown->text($product->kurztext); ?></p>
             </div>
