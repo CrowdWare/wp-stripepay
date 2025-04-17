@@ -170,7 +170,7 @@ function stripepay_products_page() {
                     <tr><th>Name</th>
                         <td><input type="text" name="product_name" value="<?php echo esc_attr($product['name']); ?>" required></td>
                     </tr>
-                    <tr><th>Untertitle</th>
+                    <tr><th>Untertitel</th>
                         <td><input type="text" name="product_subtitle" value="<?php echo esc_attr($product['subtitle']); ?>"></td>
                     </tr>
                     <tr><th>Preis (in Cent)</th>
@@ -235,7 +235,7 @@ function stripepay_products_page() {
                 <thead>
                     <tr>
                         <th>Name</th>
-                        <th>Untertitle</th>
+                        <th>Untertitel</th>
                         <th>Kurztext</th>
                         <th>Bild</th>
                         <th>Preis</th>
