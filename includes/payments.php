@@ -242,55 +242,90 @@ function stripepay_purchases_page() {
  * Webhook-Endpunkt für Stripe.
  */
 function stripepay_webhook_handler() {
+    // Debug-Informationen
+    error_log('Stripe Webhook wurde aufgerufen');
+    error_log('REQUEST_METHOD: ' . $_SERVER['REQUEST_METHOD']);
+    
     if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+        error_log('Ungültige Anfragemethode: ' . $_SERVER['REQUEST_METHOD']);
         status_header(400);
+        echo json_encode(['error' => 'Ungültige Anfragemethode. POST erwartet.']);
         exit;
     }
 
     $payload = @file_get_contents('php://input');
+    error_log('Webhook Payload: ' . substr($payload, 0, 100) . '...');
+    
     $sig_header = $_SERVER['HTTP_STRIPE_SIGNATURE'] ?? '';
+    if (empty($sig_header)) {
+        error_log('Stripe-Signature Header fehlt');
+    } else {
+        error_log('Stripe-Signature Header vorhanden: ' . substr($sig_header, 0, 50) . '...');
+    }
 
     try {
         // Stripe-Bibliothek initialisieren
         stripepay_init_stripe();
+        error_log('Stripe-Bibliothek initialisiert');
 
         // Webhook-Secret aus den Einstellungen holen
         $webhook_secret = get_option('stripepay_webhook_secret', '');
 
         if (!$webhook_secret) {
+            error_log('Webhook-Secret nicht konfiguriert');
             status_header(400);
             echo json_encode(['error' => 'Webhook-Secret nicht konfiguriert.']);
             exit;
         }
+        
+        error_log('Webhook-Secret konfiguriert: ' . substr($webhook_secret, 0, 5) . '...');
 
         // Event verifizieren
-        $event = \Stripe\Webhook::constructEvent(
-            $payload,
-            $sig_header,
-            $webhook_secret
-        );
+        try {
+            $event = \Stripe\Webhook::constructEvent(
+                $payload,
+                $sig_header,
+                $webhook_secret
+            );
+            error_log('Event verifiziert: ' . $event->id . ', Typ: ' . $event->type);
+        } catch (\UnexpectedValueException $e) {
+            error_log('Ungültiger Payload: ' . $e->getMessage());
+            status_header(400);
+            echo json_encode(['error' => 'Ungültiger Payload: ' . $e->getMessage()]);
+            exit;
+        } catch (\Stripe\Exception\SignatureVerificationException $e) {
+            error_log('Ungültige Signatur: ' . $e->getMessage());
+            status_header(400);
+            echo json_encode(['error' => 'Ungültige Signatur: ' . $e->getMessage()]);
+            exit;
+        }
 
         // Event verarbeiten
         if ($event->type === 'payment_intent.succeeded') {
-            stripepay_process_webhook_event($event);
-            status_header(200);
-            echo json_encode(['status' => 'success']);
+            error_log('Verarbeite payment_intent.succeeded Event');
+            $result = stripepay_process_webhook_event($event);
+            
+            if ($result) {
+                error_log('Event erfolgreich verarbeitet');
+                status_header(200);
+                echo json_encode(['status' => 'success']);
+            } else {
+                error_log('Fehler bei der Verarbeitung des Events');
+                status_header(500);
+                echo json_encode(['error' => 'Fehler bei der Verarbeitung des Events']);
+            }
             exit;
+        } else {
+            error_log('Event-Typ wird ignoriert: ' . $event->type);
         }
 
         status_header(200);
         echo json_encode(['status' => 'ignored']);
-    } catch (\UnexpectedValueException $e) {
-        status_header(400);
-        echo json_encode(['error' => 'Ungültiger Payload']);
-        exit;
-    } catch (\Stripe\Exception\SignatureVerificationException $e) {
-        status_header(400);
-        echo json_encode(['error' => 'Ungültige Signatur']);
-        exit;
     } catch (\Exception $e) {
+        error_log('Unerwarteter Fehler: ' . $e->getMessage());
+        error_log('Stack Trace: ' . $e->getTraceAsString());
         status_header(500);
-        echo json_encode(['error' => $e->getMessage()]);
+        echo json_encode(['error' => 'Unerwarteter Fehler: ' . $e->getMessage()]);
         exit;
     }
 
@@ -325,7 +360,99 @@ function stripepay_webhook_secret_callback() {
     // Webhook-URL anzeigen
     $webhook_url = admin_url('admin-ajax.php?action=stripepay_webhook');
     echo '<p>Webhook-URL: <code>' . esc_html($webhook_url) . '</code></p>';
+    
+    // Test-Button für E-Mail
+    echo '<div style="margin-top: 15px;">';
+    echo '<h3>E-Mail-Test</h3>';
+    echo '<p>Senden Sie eine Test-E-Mail, um zu überprüfen, ob der E-Mail-Versand funktioniert:</p>';
+    echo '<input type="email" id="test_email" placeholder="E-Mail-Adresse" class="regular-text">';
+    echo '<button type="button" id="send_test_email" class="button">Test-E-Mail senden</button>';
+    echo '<span id="email_test_result" style="margin-left: 10px;"></span>';
+    echo '</div>';
+    
+    // JavaScript für den Test-Button
+    ?>
+    <script>
+    jQuery(document).ready(function($) {
+        $('#send_test_email').on('click', function() {
+            var email = $('#test_email').val();
+            if (!email) {
+                alert('Bitte geben Sie eine E-Mail-Adresse ein.');
+                return;
+            }
+            
+            $('#email_test_result').text('Sende...');
+            
+            $.ajax({
+                url: ajaxurl,
+                type: 'POST',
+                data: {
+                    action: 'stripepay_test_email',
+                    email: email,
+                    nonce: '<?php echo wp_create_nonce('stripepay_test_email'); ?>'
+                },
+                success: function(response) {
+                    if (response.success) {
+                        $('#email_test_result').text('E-Mail gesendet! Bitte überprüfen Sie Ihren Posteingang und ggf. den Spam-Ordner.');
+                        $('#email_test_result').css('color', 'green');
+                    } else {
+                        $('#email_test_result').text('Fehler: ' + response.data.message);
+                        $('#email_test_result').css('color', 'red');
+                    }
+                },
+                error: function() {
+                    $('#email_test_result').text('Fehler bei der Verbindung zum Server.');
+                    $('#email_test_result').css('color', 'red');
+                }
+            });
+        });
+    });
+    </script>
+    <?php
+    
+    // Webhook-Test-Bereich
+    echo '<div style="margin-top: 15px;">';
+    echo '<h3>Webhook-Test</h3>';
+    echo '<p>Überprüfen Sie, ob der Webhook korrekt konfiguriert ist:</p>';
+    echo '<ol>';
+    echo '<li>Gehen Sie zu Ihrem <a href="https://dashboard.stripe.com/webhooks" target="_blank">Stripe Dashboard</a></li>';
+    echo '<li>Fügen Sie einen neuen Webhook-Endpunkt hinzu mit der URL: <code>' . esc_html($webhook_url) . '</code></li>';
+    echo '<li>Wählen Sie das Event <code>payment_intent.succeeded</code></li>';
+    echo '<li>Kopieren Sie das Webhook-Secret und fügen Sie es oben ein</li>';
+    echo '<li>Klicken Sie auf "Webhook testen", um einen Test-Event zu senden</li>';
+    echo '</ol>';
+    echo '<p>Überprüfen Sie die WordPress-Fehlerprotokolle, um zu sehen, ob der Webhook korrekt verarbeitet wird.</p>';
+    echo '</div>';
 }
+
+/**
+ * AJAX-Handler für den E-Mail-Test.
+ */
+function stripepay_ajax_test_email() {
+    // Nonce überprüfen
+    if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'stripepay_test_email')) {
+        wp_send_json_error(['message' => 'Sicherheitsüberprüfung fehlgeschlagen.']);
+        exit;
+    }
+    
+    $email = isset($_POST['email']) ? sanitize_email($_POST['email']) : '';
+    
+    if (!$email || !is_email($email)) {
+        wp_send_json_error(['message' => 'Ungültige E-Mail-Adresse.']);
+        exit;
+    }
+    
+    $result = stripepay_test_email($email);
+    
+    if ($result) {
+        wp_send_json_success(['message' => 'E-Mail erfolgreich gesendet.']);
+    } else {
+        wp_send_json_error(['message' => 'Fehler beim Senden der E-Mail. Bitte überprüfen Sie die WordPress-Fehlerprotokolle.']);
+    }
+    
+    exit;
+}
+add_action('wp_ajax_stripepay_test_email', 'stripepay_ajax_test_email');
 
 /**
  * Fügt ein Feld für den Live-Modus in den Einstellungen hinzu.

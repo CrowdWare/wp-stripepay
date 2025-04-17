@@ -2,7 +2,7 @@
 /*
 Plugin Name: WP StripePay
 Description: Ein WordPress Plugin zum Verkauf von Büchern und digitalen Inhalten über Stripe. Es beinhaltet Admin-Bereiche für Stripe API Einstellungen, Produkte und Autoren sowie Shortcodes für die Anzeige einzelner Produkte und eines Produkt-Grids.
-Version: 1.0.45
+Version: 1.0.51
 Author: CrowdWare
 */
 
@@ -19,6 +19,7 @@ require_once plugin_dir_path( __FILE__ ) . 'includes/scripts.php';
 require_once plugin_dir_path( __FILE__ ) . 'includes/manual-stripe-loader.php';
 require_once plugin_dir_path( __FILE__ ) . 'includes/stripe-integration.php';
 require_once plugin_dir_path( __FILE__ ) . 'includes/emails.php';
+require_once plugin_dir_path( __FILE__ ) . 'includes/email-test.php';
 require_once plugin_dir_path( __FILE__ ) . 'includes/payments.php';
 
 // Aktivierungshook registrieren
