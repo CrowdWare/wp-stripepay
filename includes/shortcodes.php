@@ -482,3 +482,210 @@ document.addEventListener("DOMContentLoaded", function () {
     return ob_get_clean();
 }
 add_shortcode( 'stripepay_products_grid', 'stripepay_products_grid_shortcode' );
+
+/**
+ * Shortcode: Neues Produkt-Grid mit CSS Grid und Vanilla JS.
+ */
+function stripepay_products_grid_new_shortcode( $atts ) {
+    global $wpdb;
+    $products_table = $wpdb->prefix . 'stripepay_products';
+    $products = $wpdb->get_results( "SELECT * FROM $products_table" );
+    
+    // ImagesLoaded für bessere Bildladung
+    wp_enqueue_script(
+        'imagesloaded',
+        'https://unpkg.com/imagesloaded@5/imagesloaded.pkgd.min.js',
+        array(),
+        null,
+        true
+    );
+    
+    ob_start();
+    ?>
+    <div class="stripepay-products-grid-new">
+        <!-- Filter-Navigation -->
+        <ul class="stripepay-filter">
+            <li data-filter="all" class="active"><a href="#">Alle anzeigen</a></li>
+            <?php
+            // Kategorien generieren
+            $all_categories = array();
+            if ( $products ) {
+                foreach ( $products as $product ) {
+                    $cats = explode( ',', $product->categories );
+                    foreach ( $cats as $cat ) {
+                        $cat = trim( $cat );
+                        if ( $cat && ! in_array( $cat, $all_categories ) ) {
+                            $all_categories[] = $cat;
+                        }
+                    }
+                }
+            }
+            foreach ( $all_categories as $cat ) {
+                $class_name = strtolower( trim( $cat ) );
+                echo '<li data-filter="' . esc_attr( $class_name ) . '"><a href="#">' . esc_html( $cat ) . '</a></li>';
+            }
+            ?>
+        </ul>
+        
+        <!-- Produkt-Grid -->
+        <div class="stripepay-grid">
+            <?php
+            if ( $products ) {
+                foreach ( $products as $product ) {
+                    $cats = explode( ',', $product->categories );
+                    $cat_classes = '';
+                    foreach ( $cats as $cat ) {
+                        $cat_classes .= ' ' . strtolower( trim( $cat ) );
+                    }
+                    ?>
+                    <div class="stripepay-grid-item<?php echo esc_attr( $cat_classes ); ?>">
+                        <a href="product?id=<?php echo esc_html( $product->id ); ?>">
+                            <img class="stripepay-product-image" src="<?php echo esc_url( $product->image ); ?>" alt="<?php echo esc_attr( $product->name ); ?>">
+                        </a>
+                    </div>
+                    <?php
+                }
+            }
+            ?>
+        </div>
+    </div>
+    
+    <style>
+    /* CSS für das neue Grid */
+    .stripepay-products-grid-new {
+        width: 100%;
+        max-width: 100%;
+        margin-bottom: 30px;
+    }
+    
+    /* Filter-Styling */
+    .stripepay-filter {
+        display: flex;
+        flex-wrap: wrap;
+        list-style: none;
+        padding: 0;
+        margin: 0 0 20px 0;
+    }
+    
+    .stripepay-filter li {
+        margin-right: 10px;
+        margin-bottom: 10px;
+    }
+    
+    .stripepay-filter li a {
+        display: block;
+        padding: 8px 16px;
+        text-decoration: none;
+        border-radius: 4px;
+        background-color: #f8f9fa;
+        color: #007bff;
+        transition: all 0.3s ease;
+    }
+    
+    .stripepay-filter li.active a,
+    .stripepay-filter li a:hover {
+        background-color: #007bff;
+        color: white;
+    }
+    
+    /* Grid-Layout */
+    .stripepay-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 20px;
+    }
+    
+    .stripepay-grid-item {
+        transition: opacity 0.3s ease, transform 0.3s ease;
+    }
+    
+    .stripepay-grid-item.hidden {
+        display: none;
+    }
+    
+    .stripepay-product-image {
+        width: 100%;
+        height: auto;
+        border-radius: 6px;
+        display: block;
+    }
+    
+    /* Responsive Design */
+    @media (max-width: 992px) {
+        .stripepay-grid {
+            grid-template-columns: repeat(3, 1fr);
+        }
+    }
+    
+    @media (max-width: 768px) {
+        .stripepay-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+    }
+    
+    @media (max-width: 480px) {
+        .stripepay-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+    </style>
+    
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Filter-Funktionalität
+        const filterButtons = document.querySelectorAll('.stripepay-filter li');
+        const gridItems = document.querySelectorAll('.stripepay-grid-item');
+        
+        // Bilder laden lassen, bevor wir das Grid initialisieren
+        imagesLoaded(document.querySelector('.stripepay-grid'), function() {
+            // Alle Elemente initial sichtbar machen
+            gridItems.forEach(item => {
+                item.style.opacity = '1';
+            });
+            
+            // Filter-Funktionalität
+            filterButtons.forEach(button => {
+                button.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    
+                    // Aktiven Button markieren
+                    filterButtons.forEach(btn => btn.classList.remove('active'));
+                    this.classList.add('active');
+                    
+                    const filter = this.getAttribute('data-filter');
+                    
+                    // Elemente filtern mit Animation
+                    gridItems.forEach(item => {
+                        if (filter === 'all') {
+                            // Einblenden
+                            item.style.opacity = '0';
+                            setTimeout(() => {
+                                item.classList.remove('hidden');
+                                item.style.opacity = '1';
+                            }, 300);
+                        } else {
+                            if (item.classList.contains(filter)) {
+                                // Einblenden
+                                item.style.opacity = '0';
+                                setTimeout(() => {
+                                    item.classList.remove('hidden');
+                                    item.style.opacity = '1';
+                                }, 300);
+                            } else {
+                                // Ausblenden
+                                item.style.opacity = '0';
+                                setTimeout(() => {
+                                    item.classList.add('hidden');
+                                }, 300);
+                            }
+                        }
+                    });
+                });
+            });
+        });
+    });
+    </script>
+    <?php
+    return ob_get_clean();
+}
+add_shortcode( 'stripepay_products_grid_new', 'stripepay_products_grid_new_shortcode' );
