@@ -104,7 +104,13 @@ function stripepay_product_shortcode($atts = array()) {
                 <h2><?php echo esc_html( $product->name ); ?></h2>
                 <p><strong><?php echo esc_html( $product->subtitle ); ?></strong></p>
                 <p>Von: <?php echo esc_html( $product->author_name ); ?></p>
-                <p>Preis: <?php echo number_format($product->price / 100, 2, ',', '.') . ' €'; ?></p>
+                <p>Preis: <?php 
+                    if ($product->price == 0) {
+                        echo 'kostenlos';
+                    } else {
+                        echo number_format($product->price / 100, 2, ',', '.') . ' €'; 
+                    }
+                ?></p>
                 <p><?php echo $Parsedown->text($product->kurztext); ?></p>
                 
                 <!-- Eigene Share-Buttons -->
@@ -132,33 +138,113 @@ function stripepay_product_shortcode($atts = array()) {
         </div>
         <p><?php echo $Parsedown->text($product->langtext); ?></p>
         
-        <div class="stripepay-payment-container">
-            <h3>Jetzt kaufen</h3>
-            
-            <!-- Erfolgs- und Fehlermeldungen -->
-            <div id="stripepay-payment-success" style="display: none;"></div>
-            <div id="stripepay-payment-processing" style="display: none;"></div>
-            <div id="stripepay-card-errors" role="alert" style="display: none;"></div>
-            
-            <!-- Zahlungsformular -->
-            <form id="stripepay-payment-form" data-product-id="<?php echo esc_attr($product_id); ?>">
-                <div class="stripepay-form-row">
-                    <label for="stripepay_email">E-Mail-Adresse</label>
-                    <input type="email" id="stripepay_email" name="stripepay_email" required>
+        <?php 
+        // Prüfen, ob die download_url eine externe URL ist
+        $is_external_url = !empty($product->download_url) && (strpos($product->download_url, 'http://') === 0 || strpos($product->download_url, 'https://') === 0);
+        
+        if ($product->price == 0): ?>
+            <?php if ($product->download_url === 'sml'): ?>
+                <div class="stripepay-sml-notice">
+                    <h3>Hinweis</h3>
+                    <p>Dieses Buch findest Du nur im FreeBookReader für Android</p>
                 </div>
+            <?php elseif (!empty($product->download_url)): ?>
+                <div class="stripepay-free-download">
+                    <h3>Download</h3>
+                    <a href="<?php echo esc_url($product->download_url); ?>" class="stripepay-download-button">
+                        Jetzt herunterladen
+                    </a>
+                </div>
+            <?php endif; ?>
+        <?php elseif ($is_external_url): ?>
+            <div class="stripepay-external-order">
+                <h3>Bestellung</h3>
+                <a href="<?php echo esc_url($product->download_url); ?>" class="stripepay-order-button" target="_blank">
+                    Bestellen
+                </a>
+            </div>
+        <?php else: ?>
+            <div class="stripepay-payment-container">
+                <h3>Jetzt kaufen</h3>
                 
-                <div class="stripepay-form-row">
-                    <label for="stripepay-card-element">Kreditkarte</label>
-                    <div id="stripepay-card-element">
-                        <!-- Stripe Elements wird hier eingefügt -->
+                <!-- Erfolgs- und Fehlermeldungen -->
+                <div id="stripepay-payment-success" style="display: none;"></div>
+                <div id="stripepay-payment-processing" style="display: none;"></div>
+                <div id="stripepay-card-errors" role="alert" style="display: none;"></div>
+                
+                <!-- Zahlungsformular -->
+                <form id="stripepay-payment-form" data-product-id="<?php echo esc_attr($product_id); ?>">
+                    <div class="stripepay-form-row">
+                        <label for="stripepay_email">E-Mail-Adresse</label>
+                        <input type="email" id="stripepay_email" name="stripepay_email" required>
                     </div>
-                </div>
-                
-                <button type="submit">Kaufen</button>
-            </form>
-        </div>
+                    
+                    <div class="stripepay-form-row">
+                        <label for="stripepay-card-element">Kreditkarte</label>
+                        <div id="stripepay-card-element">
+                            <!-- Stripe Elements wird hier eingefügt -->
+                        </div>
+                    </div>
+                    
+                    <button type="submit">Kaufen</button>
+                </form>
+            </div>
+        <?php endif; ?>
     </div>
     <style>
+    .stripepay-sml-notice {
+        background-color: #f8f9fa;
+        border: 1px solid #e0e0e0;
+        border-radius: 4px;
+        padding: 20px;
+        margin: 20px 0;
+        text-align: center;
+    }
+    
+    .stripepay-free-download {
+        margin: 20px 0;
+        text-align: center;
+    }
+    
+    .stripepay-download-button {
+        display: inline-block;
+        background-color: #28a745;
+        color: white;
+        padding: 10px 20px;
+        border-radius: 4px;
+        text-decoration: none;
+        font-weight: bold;
+        margin: 10px 0;
+    }
+    
+    .stripepay-download-button:hover {
+        background-color: #218838;
+        color: white;
+        text-decoration: none;
+    }
+    
+    .stripepay-external-order {
+        margin: 20px 0;
+        text-align: center;
+    }
+    
+    .stripepay-order-button {
+        display: inline-block;
+        background-color: #0275d8;
+        color: white;
+        padding: 10px 20px;
+        border-radius: 4px;
+        text-decoration: none;
+        font-weight: bold;
+        margin: 10px 0;
+    }
+    
+    .stripepay-order-button:hover {
+        background-color: #025aa5;
+        color: white;
+        text-decoration: none;
+    }
+    
     .stripepay-row {
     display: flex;
     align-items: flex-start;
