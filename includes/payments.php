@@ -147,6 +147,7 @@ function stripepay_purchases_page() {
                     <th>Betrag</th>
                     <th>Status</th>
                     <th>Kaufdatum</th>
+                    <th>Bezahlmodus</th>
                     <th>Download-Link gültig bis</th>
                     <th>Downloads</th>
                     <th>Aktionen</th>
@@ -180,6 +181,7 @@ function stripepay_purchases_page() {
                                 ?>
                             </td>
                             <td><?php echo date_i18n(get_option('date_format') . ' ' . get_option('time_format'), strtotime($purchase->purchase_date)); ?></td>
+                            <td><?php echo $purchase->is_live ? 'Live' : 'Test'; ?></td>
                             <td>
                                 <?php
                                 if ($purchase->download_expiry) {
