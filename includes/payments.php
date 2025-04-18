@@ -239,11 +239,13 @@ function stripepay_purchases_page() {
 }
 
 /**
- * Webhook-Endpunkt für Stripe.
+ * Gemeinsame Webhook-Verarbeitungslogik für Stripe.
+ * 
+ * @param string $mode 'live' oder 'test'
  */
-function stripepay_webhook_handler() {
+function stripepay_process_webhook($mode = 'live') {
     // Debug-Informationen
-    error_log('Stripe Webhook wurde aufgerufen');
+    error_log('Stripe Webhook wurde aufgerufen (Modus: ' . $mode . ')');
     error_log('REQUEST_METHOD: ' . $_SERVER['REQUEST_METHOD']);
     
     if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
@@ -268,13 +270,15 @@ function stripepay_webhook_handler() {
         stripepay_init_stripe();
         error_log('Stripe-Bibliothek initialisiert');
 
-        // Webhook-Secret aus den Einstellungen holen
-        $webhook_secret = get_option('stripepay_webhook_secret', '');
+        // Webhook-Secret aus den Einstellungen holen (basierend auf dem Modus)
+        $webhook_secret = ($mode === 'live') 
+            ? get_option('stripepay_webhook_secret', '') 
+            : get_option('stripepay_webhook_secret_test', '');
 
         if (!$webhook_secret) {
-            error_log('Webhook-Secret nicht konfiguriert');
+            error_log('Webhook-Secret nicht konfiguriert für Modus: ' . $mode);
             status_header(400);
-            echo json_encode(['error' => 'Webhook-Secret nicht konfiguriert.']);
+            echo json_encode(['error' => 'Webhook-Secret nicht konfiguriert für Modus: ' . $mode]);
             exit;
         }
         
@@ -331,8 +335,24 @@ function stripepay_webhook_handler() {
 
     exit;
 }
+
+/**
+ * Webhook-Endpunkt für Stripe Live-Modus.
+ */
+function stripepay_webhook_handler() {
+    stripepay_process_webhook('live');
+}
 add_action('wp_ajax_stripepay_webhook', 'stripepay_webhook_handler');
 add_action('wp_ajax_nopriv_stripepay_webhook', 'stripepay_webhook_handler');
+
+/**
+ * Webhook-Endpunkt für Stripe Test-Modus.
+ */
+function stripepay_webhook_test_handler() {
+    stripepay_process_webhook('test');
+}
+add_action('wp_ajax_stripepay_webhook_test', 'stripepay_webhook_test_handler');
+add_action('wp_ajax_nopriv_stripepay_webhook_test', 'stripepay_webhook_test_handler');
 
 /**
  * Fügt ein Feld für das Webhook-Secret in den Einstellungen hinzu.
@@ -353,13 +373,24 @@ add_action('admin_init', 'stripepay_add_webhook_secret_field');
  * Callback für das Webhook-Secret-Feld.
  */
 function stripepay_webhook_secret_callback() {
-    $webhook_secret = get_option('stripepay_webhook_secret', '');
-    echo '<input type="text" name="stripepay_webhook_secret" value="' . esc_attr($webhook_secret) . '" class="regular-text">';
-    echo '<p class="description">Webhook-Secret für die Verifizierung von Stripe-Events.</p>';
+    $live_webhook_secret = get_option('stripepay_webhook_secret', '');
+    $test_webhook_secret = get_option('stripepay_webhook_secret_test', '');
     
-    // Webhook-URL anzeigen
-    $webhook_url = admin_url('admin-ajax.php?action=stripepay_webhook');
-    echo '<p>Webhook-URL: <code>' . esc_html($webhook_url) . '</code></p>';
+    // Live Webhook
+    echo '<h3>Live Webhook</h3>';
+    echo '<input type="text" name="stripepay_webhook_secret" value="' . esc_attr($live_webhook_secret) . '" class="regular-text">';
+    echo '<p class="description">Webhook-Secret für die Verifizierung von Stripe-Events im Live-Modus.</p>';
+    
+    $live_webhook_url = admin_url('admin-ajax.php?action=stripepay_webhook');
+    echo '<p>Live Webhook-URL: <code>' . esc_html($live_webhook_url) . '</code></p>';
+    
+    // Test Webhook
+    echo '<h3>Test Webhook</h3>';
+    echo '<input type="text" name="stripepay_webhook_secret_test" value="' . esc_attr($test_webhook_secret) . '" class="regular-text">';
+    echo '<p class="description">Webhook-Secret für die Verifizierung von Stripe-Events im Test-Modus.</p>';
+    
+    $test_webhook_url = admin_url('admin-ajax.php?action=stripepay_webhook_test');
+    echo '<p>Test Webhook-URL: <code>' . esc_html($test_webhook_url) . '</code></p>';
     
     // Test-Button für E-Mail
     echo '<div style="margin-top: 15px;">';
@@ -413,15 +444,19 @@ function stripepay_webhook_secret_callback() {
     // Webhook-Test-Bereich
     echo '<div style="margin-top: 15px;">';
     echo '<h3>Webhook-Test</h3>';
-    echo '<p>Überprüfen Sie, ob der Webhook korrekt konfiguriert ist:</p>';
+    echo '<p>Überprüfen Sie, ob die Webhooks korrekt konfiguriert sind:</p>';
     echo '<ol>';
     echo '<li>Gehen Sie zu Ihrem <a href="https://dashboard.stripe.com/webhooks" target="_blank">Stripe Dashboard</a></li>';
-    echo '<li>Fügen Sie einen neuen Webhook-Endpunkt hinzu mit der URL: <code>' . esc_html($webhook_url) . '</code></li>';
-    echo '<li>Wählen Sie das Event <code>payment_intent.succeeded</code></li>';
-    echo '<li>Kopieren Sie das Webhook-Secret und fügen Sie es oben ein</li>';
-    echo '<li>Klicken Sie auf "Webhook testen", um einen Test-Event zu senden</li>';
+    echo '<li>Fügen Sie zwei neue Webhook-Endpunkte hinzu:</li>';
+    echo '<ul>';
+    echo '<li>Live-Modus: <code>' . esc_html($live_webhook_url) . '</code></li>';
+    echo '<li>Test-Modus: <code>' . esc_html($test_webhook_url) . '</code></li>';
+    echo '</ul>';
+    echo '<li>Wählen Sie für beide das Event <code>payment_intent.succeeded</code></li>';
+    echo '<li>Kopieren Sie die Webhook-Secrets und fügen Sie sie oben ein</li>';
+    echo '<li>Klicken Sie auf "Webhook testen", um Test-Events zu senden</li>';
     echo '</ol>';
-    echo '<p>Überprüfen Sie die WordPress-Fehlerprotokolle, um zu sehen, ob der Webhook korrekt verarbeitet wird.</p>';
+    echo '<p>Überprüfen Sie die WordPress-Fehlerprotokolle, um zu sehen, ob die Webhooks korrekt verarbeitet werden.</p>';
     echo '</div>';
 }
 

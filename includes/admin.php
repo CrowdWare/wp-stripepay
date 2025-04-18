@@ -48,6 +48,7 @@ function stripepay_settings_page() {
         update_option( 'stripepay_stripe_live_publishable_key', sanitize_text_field( $_POST['stripepay_stripe_live_publishable_key'] ) );
         update_option( 'stripepay_stripe_test_publishable_key', sanitize_text_field( $_POST['stripepay_stripe_test_publishable_key'] ) );
         update_option( 'stripepay_webhook_secret', sanitize_text_field( $_POST['stripepay_webhook_secret'] ) );
+        update_option( 'stripepay_webhook_secret_test', sanitize_text_field( $_POST['stripepay_webhook_secret_test'] ) );
         update_option( 'stripepay_live_mode', isset( $_POST['stripepay_live_mode'] ) ? 1 : 0 );
         echo '<div class="updated"><p>Einstellungen gespeichert.</p></div>';
     }
@@ -89,11 +90,19 @@ function stripepay_settings_page() {
                     <td><input type="text" name="stripepay_stripe_test_publishable_key" value="<?php echo esc_attr( $test_publishable_key ); ?>" class="regular-text"></td>
                 </tr>
                 <tr>
-                    <th scope="row">Stripe Webhook Secret</th>
+                    <th scope="row">Stripe Live Webhook Secret</th>
                     <td>
                         <input type="text" name="stripepay_webhook_secret" value="<?php echo esc_attr( $webhook_secret ); ?>" class="regular-text">
-                        <p class="description">Webhook-Secret für die Verifizierung von Stripe-Events.</p>
-                        <p>Webhook-URL: <code><?php echo esc_html( admin_url( 'admin-ajax.php?action=stripepay_webhook' ) ); ?></code></p>
+                        <p class="description">Webhook-Secret für die Verifizierung von Stripe-Events im Live-Modus.</p>
+                        <p>Live Webhook-URL: <code><?php echo esc_html( admin_url( 'admin-ajax.php?action=stripepay_webhook' ) ); ?></code></p>
+                    </td>
+                </tr>
+                <tr>
+                    <th scope="row">Stripe Test Webhook Secret</th>
+                    <td>
+                        <input type="text" name="stripepay_webhook_secret_test" value="<?php echo esc_attr( get_option( 'stripepay_webhook_secret_test', '' ) ); ?>" class="regular-text">
+                        <p class="description">Webhook-Secret für die Verifizierung von Stripe-Events im Test-Modus.</p>
+                        <p>Test Webhook-URL: <code><?php echo esc_html( admin_url( 'admin-ajax.php?action=stripepay_webhook_test' ) ); ?></code></p>
                     </td>
                 </tr>
             </table>
