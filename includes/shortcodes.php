@@ -2,13 +2,82 @@
 /**
  * Shortcode: Einzelproduktanzeige.
  */
-function stripepay_product_shortcode() {
-    global $wpdb;
-    $id = isset($_GET['id']) ? intval($_GET['id']) : 0;
-    if (!$id) return '<p>Kein Produkt gefunden.</p>';
+function stripepay_product_shortcode($atts = array()) {
+    global $wpdb, $wp_query;
     
-    $product_id = intval( $id );
-    if ( ! $product_id ) {
+    // Debug-Informationen
+    error_log('WP StripePay Shortcode Debug - GET params: ' . print_r($_GET, true));
+    error_log('WP StripePay Shortcode Debug - WP Query: ' . print_r($wp_query->query_vars, true));
+    error_log('WP StripePay Shortcode Debug - REQUEST_URI: ' . $_SERVER['REQUEST_URI']);
+    
+    // Versuche ID aus verschiedenen Quellen zu bekommen
+    $id = 0;
+    
+    // 1. Aus Shortcode-Attributen (für manuelle Verwendung)
+    if (isset($atts['id'])) {
+        $id = intval($atts['id']);
+        error_log('WP StripePay Shortcode Debug - ID from shortcode attribute: ' . $id);
+    }
+    // 2. Aus $_GET['id']
+    elseif (isset($_GET['id'])) {
+        $id = intval($_GET['id']);
+        error_log('WP StripePay Shortcode Debug - ID from GET: ' . $id);
+    }
+    // 3. Aus Query-Variablen
+    elseif (isset($wp_query->query_vars['product_id'])) {
+        $id = intval($wp_query->query_vars['product_id']);
+        error_log('WP StripePay Shortcode Debug - ID from query_vars: ' . $id);
+    }
+    // 4. Aus URL extrahieren (direkter Ansatz)
+    elseif (isset($_SERVER['REQUEST_URI'])) {
+        $uri = $_SERVER['REQUEST_URI'];
+        error_log('WP StripePay Shortcode Debug - Analyzing URI: ' . $uri);
+        
+        // Methode 1: Standard-Format product/title-id/
+        if (preg_match('/product\/([^\/]+)-([0-9]+)\/?$/', $uri, $matches)) {
+            $id = intval($matches[2]);
+            error_log('WP StripePay Shortcode Debug - ID from URL regex method 1: ' . $id);
+        }
+        // Methode 2: Alternative Format product/title-id
+        elseif (preg_match('/product\/([^\/]+)-([0-9]+)$/', $uri, $matches)) {
+            $id = intval($matches[2]);
+            error_log('WP StripePay Shortcode Debug - ID from URL regex method 2: ' . $id);
+        }
+        // Methode 3: Extraktion der letzten Zahl aus dem letzten Pfadteil
+        elseif (strpos($uri, 'product/') !== false) {
+            $parts = explode('/', trim($uri, '/'));
+            $last_part = end($parts);
+            error_log('WP StripePay Shortcode Debug - Last path part: ' . $last_part);
+            
+            // Versuche, die letzte Zahl zu extrahieren
+            if (preg_match('/([0-9]+)$/', $last_part, $matches)) {
+                $id = intval($matches[1]);
+                error_log('WP StripePay Shortcode Debug - ID from last number in path: ' . $id);
+            }
+            // Versuche, eine Zahl irgendwo im letzten Pfadteil zu finden
+            elseif (preg_match('/([0-9]+)/', $last_part, $matches)) {
+                $id = intval($matches[1]);
+                error_log('WP StripePay Shortcode Debug - ID from any number in path: ' . $id);
+            }
+        }
+    }
+    
+    if (!$id) {
+        error_log('WP StripePay Shortcode Debug - No ID found in any source');
+        // Versuche, alle Produkte zu laden und das erste anzuzeigen (Fallback)
+        $products_table = $wpdb->prefix . 'stripepay_products';
+        $products = $wpdb->get_results("SELECT id FROM $products_table LIMIT 1");
+        if (!empty($products)) {
+            $id = $products[0]->id;
+            error_log('WP StripePay Shortcode Debug - Using fallback product ID: ' . $id);
+        } else {
+            return '<p>Kein Produkt gefunden. (ID konnte nicht ermittelt werden)</p>';
+        }
+    }
+    
+    $product_id = intval($id);
+    if (!$product_id) {
+        error_log('WP StripePay Shortcode Debug - Invalid product ID');
         return '<p>Ungültiges Produkt.</p>';
     }
     
@@ -18,6 +87,11 @@ function stripepay_product_shortcode() {
     if ( ! $product ) {
         return 'Produkt nicht gefunden.';
     }
+    
+    // Generiere die kanonische URL für dieses Produkt
+    $product_slug = sanitize_title($product->name);
+    $product_url = home_url("/product/{$product_slug}-{$product->id}/");
+    
     ob_start();
     $Parsedown = new Parsedown();
     ?>
@@ -242,7 +316,11 @@ function stripepay_products_grid_shortcode( $atts ) {
                         ?>
                         <li style="list-style: none;" class="isotope-item col-sm-6 col-md-3<?php echo esc_attr( $cat_classes ); ?>">
                                 <figure>
-                                    <a href="product?id=<?php echo esc_html( $product->id ); ?>"><img width="260" height="170" class="img-responsive img-rounded" src="<?php echo esc_url( $product->image ); ?>" alt="<?php echo esc_attr( $product->name ); ?>"></a>
+                                    <?php 
+                                    $product_slug = sanitize_title($product->name);
+                                    $product_url = home_url("/product/{$product_slug}-{$product->id}/");
+                                    ?>
+                                    <a href="<?php echo esc_url($product_url); ?>"><img width="260" height="170" class="img-responsive img-rounded" src="<?php echo esc_url( $product->image ); ?>" alt="<?php echo esc_attr( $product->name ); ?>"></a>
                                 </figure>
                         </li>
                     <?php
@@ -539,7 +617,11 @@ function stripepay_products_grid_new_shortcode( $atts ) {
                     }
                     ?>
                     <div class="stripepay-grid-item<?php echo esc_attr( $cat_classes ); ?>">
-                        <a href="product?id=<?php echo esc_html( $product->id ); ?>">
+                        <?php 
+                        $product_slug = sanitize_title($product->name);
+                        $product_url = home_url("/product/{$product_slug}-{$product->id}/");
+                        ?>
+                        <a href="<?php echo esc_url($product_url); ?>">
                             <img class="stripepay-product-image" src="<?php echo esc_url( $product->image ); ?>" alt="<?php echo esc_attr( $product->name ); ?>">
                         </a>
                     </div>
