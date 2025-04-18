@@ -10,8 +10,10 @@ if (!defined('ABSPATH')) {
 
 /**
  * Initialisiert die Stripe API mit dem entsprechenden API-Key.
+ * 
+ * @param bool $is_live Ob der Live-Modus verwendet werden soll (true) oder der Test-Modus (false)
  */
-function stripepay_init_stripe() {
+function stripepay_init_stripe($is_live = null) {
     // Prüfen, ob die Stripe PHP-Bibliothek bereits geladen ist
     if (!class_exists('\Stripe\Stripe')) {
         $stripe_loaded = false;
@@ -40,8 +42,7 @@ function stripepay_init_stripe() {
     }
 
     // API-Key basierend auf dem Modus (Live oder Test) setzen
-    $live_mode = get_option('stripepay_live_mode', false);
-    if ($live_mode) {
+    if ($is_live) {
         $api_key = get_option('stripepay_stripe_live_key', '');
     } else {
         $api_key = get_option('stripepay_stripe_test_key', '');
@@ -49,14 +50,14 @@ function stripepay_init_stripe() {
 
     // Prüfen, ob ein API-Key konfiguriert ist
     if (empty($api_key)) {
-        error_log('Kein Stripe API-Key konfiguriert');
-        throw new Exception('Kein Stripe API-Key konfiguriert. Bitte geben Sie Ihre Stripe API-Keys in den Plugin-Einstellungen ein.');
+        error_log('Kein Stripe API-Key konfiguriert für Modus: ' . ($is_live ? 'Live' : 'Test'));
+        throw new Exception('Kein Stripe API-Key konfiguriert für Modus: ' . ($is_live ? 'Live' : 'Test') . '. Bitte geben Sie Ihre Stripe API-Keys in den Plugin-Einstellungen ein.');
     }
 
     // Stripe API-Key setzen
     \Stripe\Stripe::setApiKey($api_key);
     
-    error_log('Stripe wurde erfolgreich initialisiert. Modus: ' . ($live_mode ? 'Live' : 'Test'));
+    error_log('Stripe wurde erfolgreich initialisiert. Modus: ' . ($is_live ? 'Live' : 'Test'));
 }
 
 /**
@@ -112,6 +113,7 @@ function stripepay_retrieve_payment_intent($payment_intent_id) {
 function stripepay_process_webhook_event($event) {
     global $wpdb;
     $purchases_table = $wpdb->prefix . 'stripepay_purchases';
+    $products_table = $wpdb->prefix . 'stripepay_products';
 
     // Nur payment_intent.succeeded Events verarbeiten
     if ($event->type !== 'payment_intent.succeeded') {
@@ -121,6 +123,31 @@ function stripepay_process_webhook_event($event) {
     $payment_intent = $event->data->object;
     $payment_intent_id = $payment_intent->id;
 
+    // Kauf in der Datenbank suchen
+    $purchase = $wpdb->get_row($wpdb->prepare(
+        "SELECT * FROM $purchases_table WHERE payment_intent_id = %s",
+        $payment_intent_id
+    ));
+
+    if (!$purchase) {
+        error_log('Kauf nicht gefunden für Payment Intent: ' . $payment_intent_id);
+        return false;
+    }
+
+    // Produkt aus der Datenbank holen, um den Modus zu bestimmen
+    $product = $wpdb->get_row($wpdb->prepare(
+        "SELECT * FROM $products_table WHERE id = %d",
+        $purchase->product_id
+    ));
+
+    if (!$product) {
+        error_log('Produkt nicht gefunden: ' . $purchase->product_id);
+        return false;
+    }
+
+    // Modus basierend auf dem Produkt-Attribut 'life' bestimmen
+    $is_live = (bool)$product->life;
+
     // Kauf in der Datenbank aktualisieren
     $wpdb->update(
         $purchases_table,
@@ -128,6 +155,7 @@ function stripepay_process_webhook_event($event) {
             'payment_status' => 'completed',
             'download_token' => stripepay_generate_download_token(),
             'download_expiry' => date('Y-m-d H:i:s', strtotime('+7 days')),
+            'is_live' => $is_live ? 1 : 0,
         ],
         ['payment_intent_id' => $payment_intent_id]
     );
@@ -248,6 +276,10 @@ function stripepay_ajax_process_payment() {
             exit;
         }
 
+        // Modus basierend auf dem Produkt-Attribut 'life' bestimmen
+        $is_live = (bool)$product->life;
+        error_log('Produkt-Modus: ' . ($is_live ? 'Live' : 'Test'));
+
         // Stripe initialisieren
         try {
             // Versuchen, die Stripe-Bibliothek zu laden
@@ -275,24 +307,8 @@ function stripepay_ajax_process_payment() {
                 }
             }
             
-            // API-Key basierend auf dem Modus (Live oder Test) setzen
-            $live_mode = get_option('stripepay_live_mode', false);
-            if ($live_mode) {
-                $api_key = get_option('stripepay_stripe_live_key', '');
-            } else {
-                $api_key = get_option('stripepay_stripe_test_key', '');
-            }
-            
-            // Prüfen, ob ein API-Key konfiguriert ist
-            if (empty($api_key)) {
-                error_log('Kein Stripe API-Key konfiguriert');
-                wp_send_json_error(['message' => 'Kein Stripe API-Key konfiguriert. Bitte geben Sie Ihre Stripe API-Keys in den Plugin-Einstellungen ein.']);
-                exit;
-            }
-            
-            // Stripe API-Key setzen
-            \Stripe\Stripe::setApiKey($api_key);
-            error_log('Stripe wurde erfolgreich initialisiert. Modus: ' . ($live_mode ? 'Live' : 'Test'));
+            // Stripe mit dem entsprechenden API-Key initialisieren
+            stripepay_init_stripe($is_live);
         } catch (Exception $e) {
             error_log('Fehler bei der Stripe-Initialisierung: ' . $e->getMessage());
             wp_send_json_error(['message' => 'Fehler bei der Stripe-Initialisierung: ' . $e->getMessage()]);
@@ -339,6 +355,7 @@ function stripepay_ajax_process_payment() {
                 'amount' => $product->price,
                 'payment_intent_id' => $payment_intent->id,
                 'payment_status' => $payment_intent->status === 'succeeded' ? 'completed' : 'pending',
+                'is_live' => $is_live ? 1 : 0,
             ]
         );
         
@@ -474,29 +491,42 @@ function stripepay_ajax_check_payment_status() {
             exit;
         }
 
+        // Kauf in der Datenbank suchen, um den Modus zu bestimmen
+        $purchase = $wpdb->get_row($wpdb->prepare(
+            "SELECT * FROM $purchases_table WHERE payment_intent_id = %s",
+            $payment_intent_id
+        ));
+
+        if (!$purchase) {
+            error_log('Kauf nicht gefunden für Payment Intent: ' . $payment_intent_id);
+            wp_send_json_error(['message' => 'Kauf nicht gefunden.']);
+            exit;
+        }
+
+        // Produkt aus der Datenbank holen
+        $products_table = $wpdb->prefix . 'stripepay_products';
+        $product = $wpdb->get_row($wpdb->prepare(
+            "SELECT * FROM $products_table WHERE id = %d",
+            $purchase->product_id
+        ));
+
+        if (!$product) {
+            error_log('Produkt nicht gefunden: ' . $purchase->product_id);
+            wp_send_json_error(['message' => 'Produkt nicht gefunden.']);
+            exit;
+        }
+
+        // Modus basierend auf dem Produkt-Attribut 'life' bestimmen
+        $is_live = (bool)$product->life;
+        error_log('Produkt-Modus: ' . ($is_live ? 'Live' : 'Test'));
+
         // Stripe initialisieren
         try {
             // Prüfen, ob die Stripe PHP-Bibliothek geladen werden kann
             require_once plugin_dir_path(dirname(__FILE__)) . 'vendor/autoload.php';
             
-            // API-Key basierend auf dem Modus (Live oder Test) setzen
-            $live_mode = get_option('stripepay_live_mode', false);
-            if ($live_mode) {
-                $api_key = get_option('stripepay_stripe_live_key', '');
-            } else {
-                $api_key = get_option('stripepay_stripe_test_key', '');
-            }
-            
-            // Prüfen, ob ein API-Key konfiguriert ist
-            if (empty($api_key)) {
-                error_log('Kein Stripe API-Key konfiguriert');
-                wp_send_json_error(['message' => 'Kein Stripe API-Key konfiguriert. Bitte geben Sie Ihre Stripe API-Keys in den Plugin-Einstellungen ein.']);
-                exit;
-            }
-            
-            // Stripe API-Key setzen
-            \Stripe\Stripe::setApiKey($api_key);
-            error_log('Stripe wurde erfolgreich initialisiert. Modus: ' . ($live_mode ? 'Live' : 'Test'));
+            // Stripe mit dem entsprechenden API-Key initialisieren
+            stripepay_init_stripe($is_live);
         } catch (Exception $e) {
             error_log('Fehler bei der Stripe-Initialisierung: ' . $e->getMessage());
             wp_send_json_error(['message' => 'Fehler bei der Stripe-Initialisierung: ' . $e->getMessage()]);

@@ -49,6 +49,7 @@ function stripepay_activate() {
         download_expiry datetime DEFAULT NULL,
         download_count int DEFAULT 0,
         purchase_date datetime DEFAULT CURRENT_TIMESTAMP,
+        is_live tinyint(1) DEFAULT 0,
         PRIMARY KEY (id),
         KEY product_id (product_id),
         KEY email (email),

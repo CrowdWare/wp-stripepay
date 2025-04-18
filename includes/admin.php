@@ -49,7 +49,6 @@ function stripepay_settings_page() {
         update_option( 'stripepay_stripe_test_publishable_key', sanitize_text_field( $_POST['stripepay_stripe_test_publishable_key'] ) );
         update_option( 'stripepay_webhook_secret', sanitize_text_field( $_POST['stripepay_webhook_secret'] ) );
         update_option( 'stripepay_webhook_secret_test', sanitize_text_field( $_POST['stripepay_webhook_secret_test'] ) );
-        update_option( 'stripepay_live_mode', isset( $_POST['stripepay_live_mode'] ) ? 1 : 0 );
         echo '<div class="updated"><p>Einstellungen gespeichert.</p></div>';
     }
     $live_key = get_option( 'stripepay_stripe_live_key', '' );
@@ -57,7 +56,6 @@ function stripepay_settings_page() {
     $live_publishable_key = get_option( 'stripepay_stripe_live_publishable_key', '' );
     $test_publishable_key = get_option( 'stripepay_stripe_test_publishable_key', '' );
     $webhook_secret = get_option( 'stripepay_webhook_secret', '' );
-    $live_mode = get_option( 'stripepay_live_mode', false );
     ?>
     <div class="wrap">
         <h1>StripePay Einstellungen</h1>
@@ -67,10 +65,7 @@ function stripepay_settings_page() {
                 <tr>
                     <th scope="row">Modus</th>
                     <td>
-                        <label>
-                            <input type="checkbox" name="stripepay_live_mode" value="1" <?php checked( $live_mode, 1 ); ?>>
-                            Live-Modus aktivieren (deaktivieren für Test-Modus)
-                        </label>
+                        <p class="description">Der Modus (Live oder Test) wird jetzt pro Produkt bestimmt. Setzen Sie das Feld "Bezahlmodus" in den Produkteinstellungen auf "Live" oder "Test".</p>
                     </td>
                 </tr>
                 <tr>
@@ -249,7 +244,7 @@ function stripepay_products_page() {
                         <th>Bild</th>
                         <th>Preis</th>
                         <th>Autor</th>
-                        <th>Life</th>
+                        <th>Bezahlmodus</th>
                         <th>Aktionen</th>
                     </tr>
                 </thead>

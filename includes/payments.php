@@ -239,13 +239,11 @@ function stripepay_purchases_page() {
 }
 
 /**
- * Gemeinsame Webhook-Verarbeitungslogik für Stripe.
- * 
- * @param string $mode 'live' oder 'test'
+ * Webhook-Endpunkt für Stripe Live-Modus.
  */
-function stripepay_process_webhook($mode = 'live') {
+function stripepay_webhook_handler() {
     // Debug-Informationen
-    error_log('Stripe Webhook wurde aufgerufen (Modus: ' . $mode . ')');
+    error_log('Stripe Live Webhook wurde aufgerufen');
     error_log('REQUEST_METHOD: ' . $_SERVER['REQUEST_METHOD']);
     
     if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
@@ -266,26 +264,24 @@ function stripepay_process_webhook($mode = 'live') {
     }
 
     try {
-        // Stripe-Bibliothek initialisieren
-        stripepay_init_stripe();
-        error_log('Stripe-Bibliothek initialisiert');
-
-        // Webhook-Secret aus den Einstellungen holen (basierend auf dem Modus)
-        $webhook_secret = ($mode === 'live') 
-            ? get_option('stripepay_webhook_secret', '') 
-            : get_option('stripepay_webhook_secret_test', '');
+        // Webhook-Secret aus den Einstellungen holen
+        $webhook_secret = get_option('stripepay_webhook_secret', '');
 
         if (!$webhook_secret) {
-            error_log('Webhook-Secret nicht konfiguriert für Modus: ' . $mode);
+            error_log('Live Webhook-Secret nicht konfiguriert');
             status_header(400);
-            echo json_encode(['error' => 'Webhook-Secret nicht konfiguriert für Modus: ' . $mode]);
+            echo json_encode(['error' => 'Live Webhook-Secret nicht konfiguriert']);
             exit;
         }
         
-        error_log('Webhook-Secret konfiguriert: ' . substr($webhook_secret, 0, 5) . '...');
+        error_log('Live Webhook-Secret konfiguriert: ' . substr($webhook_secret, 0, 5) . '...');
 
         // Event verifizieren
         try {
+            // Stripe-Bibliothek initialisieren (mit Live-Modus)
+            stripepay_init_stripe(true);
+            error_log('Stripe-Bibliothek initialisiert (Live-Modus)');
+            
             $event = \Stripe\Webhook::constructEvent(
                 $payload,
                 $sig_header,
@@ -335,13 +331,6 @@ function stripepay_process_webhook($mode = 'live') {
 
     exit;
 }
-
-/**
- * Webhook-Endpunkt für Stripe Live-Modus.
- */
-function stripepay_webhook_handler() {
-    stripepay_process_webhook('live');
-}
 add_action('wp_ajax_stripepay_webhook', 'stripepay_webhook_handler');
 add_action('wp_ajax_nopriv_stripepay_webhook', 'stripepay_webhook_handler');
 
@@ -349,7 +338,94 @@ add_action('wp_ajax_nopriv_stripepay_webhook', 'stripepay_webhook_handler');
  * Webhook-Endpunkt für Stripe Test-Modus.
  */
 function stripepay_webhook_test_handler() {
-    stripepay_process_webhook('test');
+    // Debug-Informationen
+    error_log('Stripe Test Webhook wurde aufgerufen');
+    error_log('REQUEST_METHOD: ' . $_SERVER['REQUEST_METHOD']);
+    
+    if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+        error_log('Ungültige Anfragemethode: ' . $_SERVER['REQUEST_METHOD']);
+        status_header(400);
+        echo json_encode(['error' => 'Ungültige Anfragemethode. POST erwartet.']);
+        exit;
+    }
+
+    $payload = @file_get_contents('php://input');
+    error_log('Webhook Payload: ' . substr($payload, 0, 100) . '...');
+    
+    $sig_header = $_SERVER['HTTP_STRIPE_SIGNATURE'] ?? '';
+    if (empty($sig_header)) {
+        error_log('Stripe-Signature Header fehlt');
+    } else {
+        error_log('Stripe-Signature Header vorhanden: ' . substr($sig_header, 0, 50) . '...');
+    }
+
+    try {
+        // Webhook-Secret aus den Einstellungen holen
+        $webhook_secret = get_option('stripepay_webhook_secret_test', '');
+
+        if (!$webhook_secret) {
+            error_log('Test Webhook-Secret nicht konfiguriert');
+            status_header(400);
+            echo json_encode(['error' => 'Test Webhook-Secret nicht konfiguriert']);
+            exit;
+        }
+        
+        error_log('Test Webhook-Secret konfiguriert: ' . substr($webhook_secret, 0, 5) . '...');
+
+        // Event verifizieren
+        try {
+            // Stripe-Bibliothek initialisieren (mit Test-Modus)
+            stripepay_init_stripe(false);
+            error_log('Stripe-Bibliothek initialisiert (Test-Modus)');
+            
+            $event = \Stripe\Webhook::constructEvent(
+                $payload,
+                $sig_header,
+                $webhook_secret
+            );
+            error_log('Event verifiziert: ' . $event->id . ', Typ: ' . $event->type);
+        } catch (\UnexpectedValueException $e) {
+            error_log('Ungültiger Payload: ' . $e->getMessage());
+            status_header(400);
+            echo json_encode(['error' => 'Ungültiger Payload: ' . $e->getMessage()]);
+            exit;
+        } catch (\Stripe\Exception\SignatureVerificationException $e) {
+            error_log('Ungültige Signatur: ' . $e->getMessage());
+            status_header(400);
+            echo json_encode(['error' => 'Ungültige Signatur: ' . $e->getMessage()]);
+            exit;
+        }
+
+        // Event verarbeiten
+        if ($event->type === 'payment_intent.succeeded') {
+            error_log('Verarbeite payment_intent.succeeded Event');
+            $result = stripepay_process_webhook_event($event);
+            
+            if ($result) {
+                error_log('Event erfolgreich verarbeitet');
+                status_header(200);
+                echo json_encode(['status' => 'success']);
+            } else {
+                error_log('Fehler bei der Verarbeitung des Events');
+                status_header(500);
+                echo json_encode(['error' => 'Fehler bei der Verarbeitung des Events']);
+            }
+            exit;
+        } else {
+            error_log('Event-Typ wird ignoriert: ' . $event->type);
+        }
+
+        status_header(200);
+        echo json_encode(['status' => 'ignored']);
+    } catch (\Exception $e) {
+        error_log('Unerwarteter Fehler: ' . $e->getMessage());
+        error_log('Stack Trace: ' . $e->getTraceAsString());
+        status_header(500);
+        echo json_encode(['error' => 'Unerwarteter Fehler: ' . $e->getMessage()]);
+        exit;
+    }
+
+    exit;
 }
 add_action('wp_ajax_stripepay_webhook_test', 'stripepay_webhook_test_handler');
 add_action('wp_ajax_nopriv_stripepay_webhook_test', 'stripepay_webhook_test_handler');
@@ -489,26 +565,4 @@ function stripepay_ajax_test_email() {
 }
 add_action('wp_ajax_stripepay_test_email', 'stripepay_ajax_test_email');
 
-/**
- * Fügt ein Feld für den Live-Modus in den Einstellungen hinzu.
- */
-function stripepay_add_live_mode_field() {
-    add_settings_field(
-        'stripepay_live_mode',
-        'Live-Modus',
-        'stripepay_live_mode_callback',
-        'stripepay-settings',
-        'default'
-    );
-    register_setting('stripepay_settings', 'stripepay_live_mode');
-}
-add_action('admin_init', 'stripepay_add_live_mode_field');
-
-/**
- * Callback für das Live-Modus-Feld.
- */
-function stripepay_live_mode_callback() {
-    $live_mode = get_option('stripepay_live_mode', false);
-    echo '<input type="checkbox" name="stripepay_live_mode" value="1" ' . checked(1, $live_mode, false) . '>';
-    echo '<p class="description">Aktivieren Sie diese Option, um den Live-Modus zu verwenden. Deaktivieren Sie sie für den Test-Modus.</p>';
-}
+// Die Option stripepay_live_mode wurde entfernt, da der Modus jetzt pro Produkt bestimmt wird
