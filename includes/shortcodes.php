@@ -106,6 +106,28 @@ function stripepay_product_shortcode($atts = array()) {
                 <p>Von: <?php echo esc_html( $product->author_name ); ?></p>
                 <p>Preis: <?php echo number_format($product->price / 100, 2, ',', '.') . ' €'; ?></p>
                 <p><?php echo $Parsedown->text($product->kurztext); ?></p>
+                
+                <!-- Eigene Share-Buttons -->
+                <div class="stripepay-share-buttons">
+                    <p>Teilen:</p>
+                    <?php
+                    // Generiere die SEO-freundliche URL für das Sharing
+                    $share_url = urlencode($product_url);
+                    $share_title = urlencode($product->name);
+                    ?>
+                    <a href="https://www.facebook.com/sharer/sharer.php?u=<?php echo $share_url; ?>" target="_blank" class="stripepay-share-button stripepay-facebook">
+                        Facebook
+                    </a>
+                    <a href="https://twitter.com/intent/tweet?url=<?php echo $share_url; ?>&text=<?php echo $share_title; ?>" target="_blank" class="stripepay-share-button stripepay-twitter">
+                        Twitter
+                    </a>
+                    <a href="mailto:?subject=<?php echo $share_title; ?>&body=<?php echo $share_url; ?>" class="stripepay-share-button stripepay-email">
+                        E-Mail
+                    </a>
+                    <a href="https://api.whatsapp.com/send?text=<?php echo $share_title . '%20' . $share_url; ?>" target="_blank" class="stripepay-share-button stripepay-whatsapp">
+                        WhatsApp
+                    </a>
+                </div>
             </div>
         </div>
         <p><?php echo $Parsedown->text($product->langtext); ?></p>
@@ -161,6 +183,63 @@ function stripepay_product_shortcode($atts = array()) {
 
     .stripepay-content {
     flex: 2 1 400px;
+    }
+
+    /* Share Buttons Styling */
+    .stripepay-share-buttons {
+        margin-top: 20px;
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+    }
+    
+    .stripepay-share-buttons p {
+        margin-right: 10px;
+        margin-bottom: 10px;
+    }
+    
+    .stripepay-share-button {
+        display: inline-block;
+        padding: 8px 12px;
+        margin-right: 8px;
+        margin-bottom: 8px;
+        border-radius: 4px;
+        text-decoration: none;
+        color: white;
+        font-size: 14px;
+        transition: background-color 0.3s ease;
+    }
+    
+    .stripepay-facebook {
+        background-color: #3b5998;
+    }
+    
+    .stripepay-facebook:hover {
+        background-color: #2d4373;
+    }
+    
+    .stripepay-twitter {
+        background-color: #1da1f2;
+    }
+    
+    .stripepay-twitter:hover {
+        background-color: #0c85d0;
+    }
+    
+    .stripepay-email {
+        background-color: #777;
+    }
+    
+    .stripepay-email:hover {
+        background-color: #555;
+    }
+    
+    .stripepay-whatsapp {
+        background-color: #25d366;
+    }
+    
+    .stripepay-whatsapp:hover {
+        background-color: #1da851;
     }
 
     @media (max-width: 768px) {

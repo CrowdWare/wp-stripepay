@@ -2,7 +2,7 @@
 /*
 Plugin Name: WP StripePay
 Description: Ein WordPress Plugin zum Verkauf von Büchern und digitalen Inhalten über Stripe. Es beinhaltet Admin-Bereiche für Stripe API Einstellungen, Produkte und Autoren sowie Shortcodes für die Anzeige einzelner Produkte und eines Produkt-Grids.
-Version: 1.0.82
+Version: 1.0.85
 Author: CrowdWare
 */
 
@@ -133,11 +133,14 @@ function stripepay_add_social_meta_tags() {
     $product_slug = sanitize_title($product->name);
     $product_url = home_url("/product/{$product_slug}-{$product->id}/");
     
+    // Aktuelle URL für AddToAny und andere Sharing-Dienste
+    $current_url = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http") . "://$_SERVER[HTTP_HOST]$_SERVER[REQUEST_URI]";
+    
     // Meta-Tags ausgeben
     echo '<meta property="og:title" content="' . esc_attr($product->name) . '" />' . "\n";
     echo '<meta property="og:description" content="' . esc_attr(wp_trim_words(strip_tags($product->kurztext), 30)) . '" />' . "\n";
     echo '<meta property="og:image" content="' . esc_url($product->image) . '" />' . "\n";
-    echo '<meta property="og:url" content="' . esc_url($product_url) . '" />' . "\n";
+    echo '<meta property="og:url" content="' . esc_url($current_url) . '" />' . "\n";
     echo '<meta property="og:type" content="book" />' . "\n";
     
     // Zusätzliche Buch-spezifische Meta-Tags
@@ -153,6 +156,10 @@ function stripepay_add_social_meta_tags() {
     
     // Kanonische URL
     echo '<link rel="canonical" href="' . esc_url($product_url) . '" />' . "\n";
+    
+    // AddToAny Meta-Tags
+    echo '<meta name="addtoany:title" content="' . esc_attr($product->name) . '" />' . "\n";
+    echo '<meta name="addtoany:description" content="' . esc_attr(wp_trim_words(strip_tags($product->kurztext), 30)) . '" />' . "\n";
 }
 add_action('wp_head', 'stripepay_add_social_meta_tags');
 
@@ -170,3 +177,111 @@ require_once plugin_dir_path( __FILE__ ) . 'includes/parsedown.php';
 
 // Aktivierungshook registrieren
 register_activation_hook( __FILE__, 'stripepay_activate' );
+
+/**
+ * Filter für AddToAny Share Buttons
+ * Ändert die URL und den Titel für das Sharing auf Produktseiten
+ */
+function stripepay_addtoany_share_link($link) {
+    // Nur auf Produktseiten ausführen
+    if (is_page('product') && isset($_GET['id'])) {
+        global $wpdb;
+        $id = intval($_GET['id']);
+        $products_table = $wpdb->prefix . 'stripepay_products';
+        
+        $product = $wpdb->get_row($wpdb->prepare(
+            "SELECT * FROM $products_table WHERE id = %d",
+            $id
+        ));
+        
+        if ($product) {
+            // Generiere die SEO-freundliche URL
+            $product_slug = sanitize_title($product->name);
+            $product_url = home_url("/product/{$product_slug}-{$product->id}/");
+            
+            // Ersetze die URL im Link
+            $link = add_query_arg(array(
+                'linkurl' => urlencode($product_url),
+                'linkname' => urlencode($product->name)
+            ), $link);
+            
+            error_log('WP StripePay Debug - Modified AddToAny link: ' . $link);
+        }
+    }
+    return $link;
+}
+add_filter('addtoany_share_url', 'stripepay_addtoany_share_link');
+
+/**
+ * Filter für AddToAny Share Buttons Titel
+ */
+function stripepay_addtoany_share_title($title) {
+    // Nur auf Produktseiten ausführen
+    if (is_page('product') && isset($_GET['id'])) {
+        global $wpdb;
+        $id = intval($_GET['id']);
+        $products_table = $wpdb->prefix . 'stripepay_products';
+        
+        $product = $wpdb->get_row($wpdb->prepare(
+            "SELECT * FROM $products_table WHERE id = %d",
+            $id
+        ));
+        
+        if ($product) {
+            $title = $product->name;
+            error_log('WP StripePay Debug - Modified AddToAny title: ' . $title);
+        }
+    }
+    return $title;
+}
+add_filter('addtoany_share_title', 'stripepay_addtoany_share_title');
+
+/**
+ * Direktes Überschreiben der AddToAny-Buttons
+ */
+function stripepay_modify_addtoany_buttons() {
+    // Nur auf Produktseiten ausführen
+    if (is_page('product') && isset($_GET['id'])) {
+        global $wpdb;
+        $id = intval($_GET['id']);
+        $products_table = $wpdb->prefix . 'stripepay_products';
+        
+        $product = $wpdb->get_row($wpdb->prepare(
+            "SELECT * FROM $products_table WHERE id = %d",
+            $id
+        ));
+        
+        if ($product) {
+            // Generiere die SEO-freundliche URL
+            $product_slug = sanitize_title($product->name);
+            $product_url = home_url("/product/{$product_slug}-{$product->id}/");
+            
+            // JavaScript hinzufügen, um die AddToAny-Parameter zu überschreiben
+            ?>
+            <script type="text/javascript">
+            document.addEventListener('DOMContentLoaded', function() {
+                // AddToAny-Konfiguration überschreiben
+                if (typeof window.a2a_config !== 'undefined') {
+                    window.a2a_config.linkurl = "<?php echo esc_js($product_url); ?>";
+                    window.a2a_config.linkname = "<?php echo esc_js($product->name); ?>";
+                    
+                    // Alle vorhandenen AddToAny-Links aktualisieren
+                    var a2aLinks = document.querySelectorAll('a.a2a_dd, a.a2a_button_facebook, a.a2a_button_twitter, a.a2a_button_email');
+                    a2aLinks.forEach(function(link) {
+                        var href = link.getAttribute('href');
+                        if (href) {
+                            href = href.replace(/linkurl=[^&]+/, 'linkurl=' + encodeURIComponent("<?php echo esc_js($product_url); ?>"));
+                            href = href.replace(/linkname=[^&]+/, 'linkname=' + encodeURIComponent("<?php echo esc_js($product->name); ?>"));
+                            link.setAttribute('href', href);
+                        }
+                    });
+                    
+                    console.log('AddToAny configuration updated for product page');
+                }
+            });
+            </script>
+            <?php
+        }
+    }
+}
+add_action('wp_footer', 'stripepay_modify_addtoany_buttons');
