@@ -140,13 +140,34 @@ function stripepay_product_shortcode($atts = array()) {
         
         <?php 
         // Prüfen, ob die download_url eine externe URL ist
-        $is_external_url = !empty($product->download_url) && (strpos($product->download_url, 'http://') === 0 || strpos($product->download_url, 'https://') === 0);
+        $is_external_url = false;
+        if (!empty($product->download_url)) {
+            // Prüfen, ob die URL mit http:// oder https:// beginnt
+            $is_url = strpos($product->download_url, 'http://') === 0 || strpos($product->download_url, 'https://') === 0;
+            
+            if ($is_url) {
+                // Aktuelle Domain ermitteln
+                $site_url = parse_url(site_url(), PHP_URL_HOST);
+                
+                // Prüfen, ob die URL die aktuelle Domain enthält
+                $url_host = parse_url($product->download_url, PHP_URL_HOST);
+                
+                // Wenn die URL-Domain nicht die aktuelle Domain ist, handelt es sich um eine externe URL
+                $is_external_url = $url_host !== $site_url && strpos($url_host, $site_url) === false;
+            }
+        }
+        
+        // Prüfen, ob die download_url auf eine APK-Datei verweist
+        $is_apk_file = !empty($product->download_url) && strpos($product->download_url, '.apk') !== false;
         
         if ($product->price == 0): ?>
-            <?php if ($product->download_url === 'sml'): ?>
-                <div class="stripepay-sml-notice">
+            <?php if ($is_apk_file): ?>
+                <div class="stripepay-apk-notice">
                     <h3>Hinweis</h3>
                     <p>Dieses Buch findest Du nur im FreeBookReader für Android</p>
+                    <a href="<?php echo esc_url($product->download_url); ?>" class="stripepay-apk-button">
+                        Download APK
+                    </a>
                 </div>
             <?php elseif (!empty($product->download_url)): ?>
                 <div class="stripepay-free-download">
@@ -192,13 +213,35 @@ function stripepay_product_shortcode($atts = array()) {
         <?php endif; ?>
     </div>
     <style>
-    .stripepay-sml-notice {
-        background-color: #f8f9fa;
-        border: 1px solid #e0e0e0;
+    .stripepay-apk-notice {
+        background-color: #343a40;
+        border: 1px solid #495057;
         border-radius: 4px;
         padding: 20px;
         margin: 20px 0;
         text-align: center;
+        color: #f8f9fa;
+    }
+    
+    .stripepay-apk-notice h3 {
+        color: #f8f9fa;
+    }
+    
+    .stripepay-apk-button {
+        display: inline-block;
+        background-color: #6c757d;
+        color: white;
+        padding: 10px 20px;
+        border-radius: 4px;
+        text-decoration: none;
+        font-weight: bold;
+        margin: 15px 0 5px 0;
+    }
+    
+    .stripepay-apk-button:hover {
+        background-color: #5a6268;
+        color: white;
+        text-decoration: none;
     }
     
     .stripepay-free-download {
